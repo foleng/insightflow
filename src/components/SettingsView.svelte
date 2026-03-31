@@ -108,7 +108,7 @@
               checked={localSettings.compactMode}
               onchange={(e) => { localSettings.compactMode = e.target.checked; handleUpdate(); }}
               class="w-5 h-5"
-              style={{ accentColor: localSettings.primaryColor }}
+              style:accent-color={localSettings.primaryColor}
             />
           </div>
           <p class="text-xs text-slate-400">{t.compactModeDesc}</p>
@@ -128,7 +128,7 @@
               checked={localSettings.twoFactorAuth}
               onchange={(e) => { localSettings.twoFactorAuth = e.target.checked; handleUpdate(); }}
               class="w-5 h-5"
-              style={{ accentColor: localSettings.primaryColor }}
+              style:accent-color={localSettings.primaryColor}
             />
           </div>
           <p class="text-xs text-slate-400">{t.twoFactorAuthDesc}</p>
@@ -163,7 +163,7 @@
               checked={localSettings.emailNotifications}
               onchange={(e) => { localSettings.emailNotifications = e.target.checked; handleUpdate(); }}
               class="w-5 h-5"
-              style={{ accentColor: localSettings.primaryColor }}
+              style:accent-color={localSettings.primaryColor}
             />
           </div>
           <p class="text-xs text-slate-400">{t.emailNotificationsDesc}</p>
@@ -177,7 +177,7 @@
               checked={localSettings.inAppPopups}
               onchange={(e) => { localSettings.inAppPopups = e.target.checked; handleUpdate(); }}
               class="w-5 h-5"
-              style={{ accentColor: localSettings.primaryColor }}
+              style:accent-color={localSettings.primaryColor}
             />
           </div>
           <p class="text-xs text-slate-400">{t.inAppPopupsDesc}</p>

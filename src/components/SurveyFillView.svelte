@@ -18,9 +18,85 @@
   const theme = $derived.by(() => survey.theme || { primaryColor: '#2563eb', backgroundColor: '#ffffff', textColor: '#1e293b', buttonTextColor: '#ffffff' });
 
   let formData = $state<Record<string, any>>({});
+  let syncWorker: SharedWorker | null = null;
+  let syncPort: MessagePort | null = null;
+
+  // 初始化 SharedWorker
+  const initSyncWorker = () => {
+    if (typeof SharedWorker === 'undefined') {
+      console.warn('SharedWorker is not supported in this browser');
+      return;
+    }
+
+    try {
+      // 创建 SharedWorker 连接
+      syncWorker = new SharedWorker('/survey-sync.worker.js');
+      syncPort = syncWorker.port;
+
+      // 监听来自 Worker 的消息
+      syncPort.onmessage = (e) => {
+        const { type, data } = e.data;
+        if (type === 'sync') {
+          // 同步来自其他标签页的数据
+          formData = { ...data };
+        }
+      };
+
+      // 初始化连接，关联到当前问卷
+      syncPort.start();
+      syncPort.postMessage({
+        type: 'init',
+        data: { surveyId: survey.id }
+      });
+    } catch (error) {
+      console.error('Failed to initialize SharedWorker:', error);
+      syncWorker = null;
+      syncPort = null;
+    }
+  };
+
+  // 发送数据更新到 Worker
+  const sendDataUpdate = (newData: Record<string, any>) => {
+    if (syncPort) {
+      try {
+        // 序列化数据以避免 DataCloneError
+        const serializedData = JSON.parse(JSON.stringify(newData));
+        syncPort.postMessage({
+          type: 'update',
+          data: serializedData
+        });
+      } catch (e) {
+        console.error('Failed to serialize data for worker:', e);
+      }
+    }
+  };
+
+  // 清理 SharedWorker 连接
+  const cleanupSyncWorker = () => {
+    if (syncPort) {
+      syncPort.postMessage({
+        type: 'disconnect'
+      });
+      syncPort.close();
+      syncPort = null;
+    }
+    syncWorker = null;
+  };
+
+  // 初始化 Worker
+  initSyncWorker();
+
+  // 组件卸载时清理 Worker
+  $effect(() => {
+    return () => {
+      cleanupSyncWorker();
+    };
+  });
 
   const handleInputChange = (fieldId: string, value: any) => {
     formData[fieldId] = value;
+    // 发送更新到其他标签页
+    sendDataUpdate(formData);
   };
 
   const isFieldVisible = (field: Field) => {

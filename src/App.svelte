@@ -1,6 +1,7 @@
 <script lang="ts">
   import './app.css';
-  import { writable, derived } from 'svelte/store';
+  import { writable, derived, get } from 'svelte/store';
+  import { onMount } from 'svelte';
   import { 
     Layers, 
     LayoutDashboard,
@@ -25,18 +26,57 @@
   // Import Gun.js
   import Gun from 'gun';
   import 'gun/sea';
+  import 'gun/lib/rindexed'; // Enable IndexedDB support
+  
+  // Import router
+  import { initRouter, navigateTo } from './router';
 
-  // Initialize Gun.js
-  const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+  // Initialize Gun.js with IndexedDB persistence
+  const gun = Gun({
+    // 使用本地 relay peer，SEA 需要网络功能
+    peers: ['https://relay.gun.eco/gun'],
+    localStorage: false, // Disable localStorage
+    radisk: true, // Enable RAD (IndexedDB) storage
+    file: 'insightflow-data' // IndexedDB database name
+  });
   const userInstance = gun.user();
 
   // Store setup
   const isAuthenticated = writable(false);
   const user = writable<{ name: string; email: string; pub: string } | null>(null);
   const view = writable<ViewType>('dashboard');
-  const surveys = writable<Survey[]>([]);
+  
+  // 从 localStorage 加载问卷数据
+  const loadSurveysFromStorage = (): Survey[] => {
+    try {
+      const data = localStorage.getItem('insightflow_surveys');
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  };
+  
+  const surveys = writable<Survey[]>(loadSurveysFromStorage());
+  
+  // 订阅 surveys 变化并保存到 localStorage
+  surveys.subscribe(value => {
+    localStorage.setItem('insightflow_surveys', JSON.stringify(value));
+  });
+  
   const activeSurveyId = writable<string | null>(null);
-  const systemSettings = writable<SystemSettings>({
+  
+  // 从 localStorage 加载系统设置
+  const loadSettingsFromStorage = (): SystemSettings => {
+    try {
+      const data = localStorage.getItem('insightflow_settings');
+      return data ? JSON.parse(data) : null;
+    } catch {
+      return null;
+    }
+  };
+  
+  const storedSettings = loadSettingsFromStorage();
+  const systemSettings = writable<SystemSettings>(storedSettings || {
     systemName: "InsightFlow 企业版",
     language: "简体中文",
     timezone: "(GMT+08:00) 北京",
@@ -51,6 +91,11 @@
     feedbackReminder: "即时"
   });
   
+  // 订阅 settings 变化并保存到 localStorage
+  systemSettings.subscribe(value => {
+    localStorage.setItem('insightflow_settings', JSON.stringify(value));
+  });
+  
   // Editor State
   const selectedSecId = writable<string | null>(null);
   const selectedFldId = writable<string | null>(null);
@@ -62,6 +107,84 @@
 
   const t_store = derived(systemSettings, ($systemSettings) => {
     return TRANSLATIONS[$systemSettings.language as Language] || TRANSLATIONS["简体中文"];
+  });
+
+  // Create reactive variables for use in JavaScript code
+  let authState = $state(get(isAuthenticated));
+  let userState = $state(get(user));
+  let viewState = $state(get(view));
+  let surveysState = $state(get(surveys));
+  let activeSurveyIdState = $state(get(activeSurveyId));
+  let activeSurveyState = $state(get(activeSurvey));
+  let systemSettingsState = $state(get(systemSettings));
+
+  // Sync store values to reactive variables
+  $effect(() => {
+    const authUnsub = isAuthenticated.subscribe(val => authState = val);
+    const userUnsub = user.subscribe(val => userState = val);
+    const viewUnsub = view.subscribe(val => viewState = val);
+    const surveysUnsub = surveys.subscribe(val => surveysState = val);
+    const activeSurveyIdUnsub = activeSurveyId.subscribe(val => activeSurveyIdState = val);
+    const activeSurveyUnsub = activeSurvey.subscribe(val => activeSurveyState = val);
+    const systemSettingsUnsub = systemSettings.subscribe(val => systemSettingsState = val);
+
+    return () => {
+      authUnsub();
+      userUnsub();
+      viewUnsub();
+      surveysUnsub();
+      activeSurveyIdUnsub();
+      activeSurveyUnsub();
+      systemSettingsUnsub();
+    };
+  });
+
+  // --- Router Setup ---
+  let routerInitialized = false;
+  let authChecked = $state(false);
+  
+  // Initialize router once when component mounts and auth is checked
+  onMount(() => {
+    // Wait for auth check before initializing router
+    const checkAuthAndInit = () => {
+      if (authChecked && !routerInitialized) {
+        initRouter(
+          (newView) => view.set(newView),
+          (id) => activeSurveyId.set(id),
+          () => authState,
+          () => navigateTo('/login')
+        );
+        routerInitialized = true;
+      }
+    };
+
+    // Check immediately if auth is already checked
+    checkAuthAndInit();
+
+    // Also set up a watcher for authChecked
+    const interval = setInterval(() => {
+      checkAuthAndInit();
+      if (routerInitialized) {
+        clearInterval(interval);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  });
+
+  // Handle authentication-based navigation
+  $effect(() => {
+    if (!routerInitialized) return;
+    
+    // Redirect to login if not authenticated and not already on login page
+    if (!authState && viewState !== 'login') {
+      navigateTo('/login');
+    }
+    
+    // Redirect to dashboard if authenticated and on login page
+    if (authState && viewState === 'login') {
+      navigateTo('/');
+    }
   });
 
   // --- System Handlers ---
@@ -84,23 +207,22 @@
       }
     };
     surveys.update(prev => [newSurvey, ...prev]);
-    activeSurveyId.set(newId);
-    view.set('editor');
     
     // Save to Gun.js if authenticated
-    if ($isAuthenticated && $user) {
+    if (authState && userState) {
       userInstance.get('surveys').get(newId).put(newSurvey);
     }
+    
+    // Navigate to editor view
+    navigateTo(`/editor/${newId}`);
   };
 
   const handleEdit = (id: string) => {
-    activeSurveyId.set(id);
-    view.set('editor');
+    navigateTo(`/editor/${id}`);
   };
 
   const handleViewStats = (id: string) => {
-    activeSurveyId.set(id);
-    view.set('analytics');
+    navigateTo(`/analytics/${id}`);
   };
 
   const handleDelete = (id: string) => {
@@ -108,25 +230,56 @@
     activeSurveyId.update(prev => prev === id ? null : prev);
     
     // Delete from Gun.js if authenticated
-    if ($isAuthenticated && $user) {
+    if (authState && userState) {
       userInstance.get('surveys').get(id).put(null);
+    }
+    
+    // If we're on the deleted survey's page, navigate back to dashboard
+    if (activeSurveyIdState === id) {
+      navigateTo('/');
     }
   };
 
   const handleFill = (id: string) => {
-    activeSurveyId.set(id);
-    view.set('fill');
+    navigateTo(`/fill/${id}`);
+  };
+
+  // 清理超过 30 天的旧回复数据
+  const cleanupOldResponses = () => {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    // 遍历所有 localStorage 键
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('insightflow_responses_')) {
+        try {
+          const responses = JSON.parse(localStorage.getItem(key) || '[]');
+          const filteredResponses = responses.filter((r: any) => {
+            const submittedDate = new Date(r.submittedAt);
+            return submittedDate > thirtyDaysAgo;
+          });
+          
+          if (filteredResponses.length < responses.length) {
+            localStorage.setItem(key, JSON.stringify(filteredResponses));
+            console.log(`Cleaned up ${responses.length - filteredResponses.length} old responses from ${key}`);
+          }
+        } catch (e) {
+          console.error(`Failed to cleanup ${key}:`, e);
+        }
+      }
+    }
   };
 
   // --- Editor Handlers ---
   const updateActiveSurvey = (updates: Partial<Survey>) => {
-    const currentActiveId = $activeSurveyId;
+    const currentActiveId = activeSurveyIdState;
     if (!currentActiveId) return;
     surveys.update(prev => prev.map(s => s.id === currentActiveId ? { ...s, ...updates } : s));
     
     // Save to Gun.js if authenticated
-    if ($isAuthenticated && $user) {
-      const updatedSurvey = $surveys.find(s => s.id === currentActiveId);
+    if (authState && userState) {
+      const updatedSurvey = surveysState.find(s => s.id === currentActiveId);
       if (updatedSurvey) {
         userInstance.get('surveys').get(currentActiveId).put(updatedSurvey);
       }
@@ -134,13 +287,13 @@
   };
 
   const updateSchema = (updates: Partial<Schema>) => {
-    const currentActive = $activeSurvey;
+    const currentActive = activeSurveyState;
     if (!currentActive) return;
     updateActiveSurvey({ schema: { ...currentActive.schema, ...updates } });
   };
 
   const addSection = () => {
-    const currentActive = $activeSurvey;
+    const currentActive = activeSurveyState;
     if (!currentActive) return;
     const newSec: Section = { id: 'sec_' + Date.now(), title: '新章节', fields: [] };
     updateSchema({ sections: [...currentActive.schema.sections, newSec] });
@@ -149,7 +302,8 @@
   const onDrop = (e: DragEvent, secId: string) => {
     e.preventDefault();
     const type = e.dataTransfer.getData('type') as FieldType;
-    if (!type || !$activeSurvey) return;
+    const currentActive = activeSurveyState;
+    if (!type || !currentActive) return;
 
     const newFld: Field = {
       id: 'fld_' + Date.now(),
@@ -160,7 +314,7 @@
     };
 
     updateSchema({
-      sections: $activeSurvey.schema.sections.map(s => 
+      sections: currentActive.schema.sections.map(s => 
         s.id === secId ? { ...s, fields: [...s.fields, newFld] } : s
       )
     });
@@ -187,25 +341,45 @@
         });
       }
     });
+    
+    // Navigate to dashboard after login
+    navigateTo('/');
   };
 
   // Logout handler
   const handleLogout = () => {
     isAuthenticated.set(false);
     user.set(null);
-    userInstance.leave();
+    localStorage.removeItem('insightflow_current_user');
     surveys.set([]);
-    view.set('dashboard');
+    
+    // Navigate to login page after logout
+    navigateTo('/login');
   };
   
-  // Check if already logged in
-  userInstance.recall({ sessionStorage: true }, (ack: any) => {
-    if (ack.err) {
-      console.log('Not logged in');
-    } else if (ack.is) {
-      handleLogin(ack.is);
+  // Check if already logged in (使用 localStorage)
+  const checkLoginStatus = () => {
+    try {
+      const currentUser = localStorage.getItem('insightflow_current_user');
+      if (currentUser) {
+        const userData = JSON.parse(currentUser);
+        isAuthenticated.set(true);
+        user.set({ 
+          name: userData.name, 
+          email: userData.pub, 
+          pub: userData.pub 
+        });
+        console.log('Restored login session:', userData);
+      }
+    } catch (e) {
+      console.error('Failed to restore login session:', e);
     }
-  });
+    // Mark auth check as complete
+    authChecked = true;
+  };
+  
+  // 立即检查登录状态
+  checkLoginStatus();
 </script>
 
 <style>
@@ -215,46 +389,46 @@
 </style>
 
 <div class="flex h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans overflow-hidden transition-colors duration-300">
-  {#if !$isAuthenticated}
+  {#if viewState === 'login' || !authState}
     <!-- Login View -->
     <LoginView 
       onLogin={handleLogin}
-      language={$systemSettings.language}
-      primaryColor={$systemSettings.primaryColor}
+      language={systemSettingsState.language}
+      primaryColor={systemSettingsState.primaryColor}
     />
   {:else}
         <!-- Sidebar Navigation -->
         <aside class="w-64 bg-slate-900 text-slate-300 dark:bg-black dark:text-slate-400 flex flex-col shrink-0">
           <div class="p-6 flex items-center gap-3 text-white font-black italic uppercase tracking-tighter">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center not-italic" style={{ backgroundColor: $systemSettings.primaryColor }}>
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center not-italic" style:background-color={systemSettingsState.primaryColor}>
               <Layers class="text-white w-5 h-5" />
             </div>
-            <span class="truncate">{$systemSettings.systemName}</span>
+            <span class="truncate">{systemSettingsState.systemName}</span>
           </div>
 
           <nav class="flex-grow px-4 space-y-1">
             <NavItem
-              active={$view === 'dashboard'}
+              active={viewState === 'dashboard'}
               label={$t_store.dashboard}
-              activeColor={$systemSettings.primaryColor}
-              onclick={() => view.set('dashboard')}
+              activeColor={systemSettingsState.primaryColor}
+              onclick={() => navigateTo('/')}
             >
               <LayoutDashboard slot="icon" class="w-4 h-4" />
             </NavItem>
             <NavItem
-              active={$view === 'analytics' && !!$activeSurveyId}
+              active={viewState === 'analytics' && !!activeSurveyIdState}
               label={$t_store.analytics}
-              activeColor={$systemSettings.primaryColor}
-              disabled={!$activeSurveyId}
-              onclick={() => $activeSurveyId && view.set('analytics')}
+              activeColor={systemSettingsState.primaryColor}
+              disabled={!activeSurveyIdState}
+              onclick={() => activeSurveyIdState && navigateTo(`/analytics/${activeSurveyIdState}`)}
             >
               <BarChart3 slot="icon" class="w-4 h-4" />
             </NavItem>
             <NavItem
-              active={$view === 'settings'}
+              active={viewState === 'settings'}
               label={$t_store.settings}
-              activeColor={$systemSettings.primaryColor}
-              onclick={() => view.set('settings')}
+              activeColor={systemSettingsState.primaryColor}
+              onclick={() => navigateTo('/settings')}
             >
               <Settings slot="icon" class="w-4 h-4" />
             </NavItem>
@@ -266,8 +440,8 @@
                 <User class="w-4 h-4" />
               </div>
               <div class="flex-grow min-w-0">
-                <p class="text-xs font-bold text-white truncate">{$user?.name}</p>
-                <p class="text-[10px] text-slate-500 dark:text-slate-600 truncate">{$user?.email}</p>
+                <p class="text-xs font-bold text-white truncate">{userState?.name}</p>
+                <p class="text-[10px] text-slate-500 dark:text-slate-600 truncate">{userState?.email}</p>
               </div>
             </div>
             <button 
@@ -282,54 +456,110 @@
 
         <!-- Main Content Area -->
         <main class="flex-grow flex flex-col overflow-hidden">
-          {#if $view === 'dashboard'}
+          {#if viewState === 'dashboard'}
             <DashboardView 
-              surveys={$surveys} 
+              surveys={surveysState} 
               onCreateNew={handleCreateNew}
               onEdit={handleEdit}
               onViewStats={handleViewStats}
               onDelete={handleDelete}
               onFill={handleFill}
-              primaryColor={$systemSettings.primaryColor}
-              language={$systemSettings.language}
-              userPub={$user?.pub}
+              primaryColor={systemSettingsState.primaryColor}
+              language={systemSettingsState.language}
+              userPub={userState?.pub}
             />
-          {:else if $view === 'editor' && $activeSurvey}
-            <EditorView 
-              survey={$activeSurvey}
-              onBack={() => view.set('dashboard')}
-              onUpdateSurvey={updateActiveSurvey}
-              selectedSecId={$selectedSecId}
-              setSelectedSecId={selectedSecId.set}
-              selectedFldId={$selectedFldId}
-              setSelectedFldId={selectedFldId.set}
-              addSection={addSection}
-              onDrop={onDrop}
-              primaryColor={$systemSettings.primaryColor}
-              language={$systemSettings.language}
-            />
-          {:else if $view === 'analytics' && $activeSurvey}
+          {:else if viewState === 'editor'}
+            {#if activeSurveyState}
+              <EditorView 
+                survey={activeSurveyState}
+                onBack={() => navigateTo('/')}
+                onUpdateSurvey={updateActiveSurvey}
+                selectedSecId={$selectedSecId}
+                setSelectedSecId={selectedSecId.set}
+                selectedFldId={$selectedFldId}
+                setSelectedFldId={selectedFldId.set}
+                addSection={addSection}
+                onDrop={onDrop}
+                primaryColor={systemSettingsState.primaryColor}
+                language={systemSettingsState.language}
+              />
+            {:else}
+              <div class="flex items-center justify-center h-full">
+                <div class="text-center">
+                  <p class="text-slate-500 mb-4">问卷未找到</p>
+                  <button 
+                    onclick={() => navigateTo('/')}
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    返回首页
+                  </button>
+                </div>
+              </div>
+            {/if}
+          {:else if viewState === 'analytics' && activeSurveyState}
             <AnalyticsView 
-              survey={$activeSurvey}
-              onBack={() => view.set('dashboard')}
-              primaryColor={$systemSettings.primaryColor}
-              language={$systemSettings.language}
+              survey={activeSurveyState}
+              onBack={() => navigateTo('/')}
+              primaryColor={systemSettingsState.primaryColor}
+              language={systemSettingsState.language}
             />
-          {:else if $view === 'settings'}
+          {:else if viewState === 'settings'}
             <SettingsView 
-              settings={$systemSettings}
-              onUpdate={systemSettings.set}
-              language={$systemSettings.language}
+              settings={systemSettingsState}
+              onUpdate={(s) => systemSettings.set(s)}
+              language={systemSettingsState.language}
             />
-          {:else if $view === 'fill' && $activeSurvey}
+          {:else if viewState === 'fill' && activeSurveyState}
             <SurveyFillView 
-              survey={$activeSurvey}
-              onBack={() => view.set('dashboard')}
+              survey={activeSurveyState}
+              onBack={() => authState ? navigateTo('/') : navigateTo('/login')}
               onSubmit={(data: any) => {
-                console.log('Survey submitted:', data);
-                view.set('dashboard');
+                console.log('Survey submitted:', JSON.parse(JSON.stringify(data)));
+                
+                // 增加问卷回复数
+                const currentSurvey = surveysState.find(s => s.id === activeSurveyIdState);
+                if (currentSurvey) {
+                  const updatedSurvey = {
+                    ...currentSurvey,
+                    responsesCount: (currentSurvey.responsesCount || 0) + 1
+                  };
+                  surveys.update(prev => prev.map(s => s.id === activeSurveyIdState ? updatedSurvey : s));
+                  
+                  // 保存回复数据到 localStorage（带错误处理）
+                  try {
+                    const responsesKey = `insightflow_responses_${activeSurveyIdState}`;
+                    const existingResponses = JSON.parse(localStorage.getItem(responsesKey) || '[]');
+                    existingResponses.push({
+                      data,
+                      submittedAt: new Date().toISOString()
+                    });
+                    localStorage.setItem(responsesKey, JSON.stringify(existingResponses));
+                  } catch (e) {
+                    console.error('Failed to save response:', e);
+                    // 如果 localStorage 满了，尝试清理旧数据
+                    if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+                      console.warn('Storage quota exceeded, cleaning up old data...');
+                      // 清理超过 30 天的旧数据
+                      cleanupOldResponses();
+                      // 重试保存
+                      try {
+                        const responsesKey = `insightflow_responses_${activeSurveyIdState}`;
+                        const existingResponses = JSON.parse(localStorage.getItem(responsesKey) || '[]');
+                        existingResponses.push({
+                          data,
+                          submittedAt: new Date().toISOString()
+                        });
+                        localStorage.setItem(responsesKey, JSON.stringify(existingResponses));
+                      } catch (e2) {
+                        console.error('Failed to save response after cleanup:', e2);
+                      }
+                    }
+                  }
+                }
+                
+                authState ? navigateTo('/') : navigateTo('/login');
               }}
-              language={$systemSettings.language}
+              language={systemSettingsState.language}
             />
           {/if}
         </main>

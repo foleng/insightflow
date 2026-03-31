@@ -35,6 +35,7 @@
 
   const t = $derived.by(() => TRANSLATIONS[(language as Language) || '简体中文']);
   let leftTab = $state<'components' | 'theme'>('components');
+  let dragOverSectionId = $state<string | null>(null);
   const currentSection = $derived.by(() => survey.schema.sections.find((s: any) => s.id === selectedSecId));
   const currentField = $derived.by(() => currentSection?.fields.find((f: any) => f.id === selectedFldId));
 
@@ -91,7 +92,7 @@
             });
             onBack();
           }}
-          class="px-6 py-2 text-white text-xs font-bold rounded-xl shadow-lg transition-all flex items-center gap-2"
+          class="px-6 py-2 text-slate-800 text-xs font-bold rounded-xl shadow-lg transition-all flex items-center gap-2"
           style={{ 
             backgroundColor: primaryColor,
             boxShadow: `0 10px 15px -3px ${primaryColor}33`
@@ -239,11 +240,28 @@
       {#each survey.schema.sections as section}
         <div 
           key={section.id}
-          class="bg-white border border-slate-100 rounded-xl p-6 mb-6"
-          ondrop={(e) => onDrop(e, section.id)}
-            ondragover={(e) => e.preventDefault()}
+          class="bg-white border-2 border-slate-100 rounded-xl p-6 mb-6 transition-all"
+          class:border-dashed={dragOverSectionId === section.id}
           onclick={() => { setSelectedSecId(section.id); setSelectedFldId(null); }}
-          style={selectedSecId === section.id && !selectedFldId ? { borderColor: primaryColor } : {}}
+          style={dragOverSectionId === section.id 
+            ? { borderColor: primaryColor, borderStyle: 'dashed', backgroundColor: `${primaryColor}10` } 
+            : (selectedSecId === section.id && !selectedFldId ? { borderColor: primaryColor } : {})}
+          ondrop={(e) => {
+            dragOverSectionId = null;
+            onDrop(e, section.id);
+          }}
+          ondragover={(e) => {
+            e.preventDefault();
+            dragOverSectionId = section.id;
+          }}
+          ondragleave={(e) => {
+            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+            const x = e.clientX;
+            const y = e.clientY;
+            if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+              dragOverSectionId = null;
+            }
+          }}
         >
           <h3 class="text-lg font-bold mb-4">{section.title}</h3>
           <div class="space-y-4">
