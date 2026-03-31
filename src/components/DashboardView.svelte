@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Plus, BarChart3, Play, MoreVertical, Trash2, Users, Calendar } from 'lucide-svelte';
+  import { Plus, BarChart3, Play, MoreVertical, Trash2, Users, Calendar, Share2, Copy, Check } from 'lucide-svelte';
   import { TRANSLATIONS } from '../i18n';
   import type { Language } from '../i18n';
   import type { Survey } from '../types';
@@ -13,11 +13,51 @@
     onFill: (id: string) => void;
     primaryColor: string;
     language: string;
+    userPub?: string;
   }
 
-  let { surveys, onCreateNew, onEdit, onViewStats, onDelete, onFill, primaryColor, language } = $props<Props>();
+  let { surveys, onCreateNew, onEdit, onViewStats, onDelete, onFill, primaryColor, language, userPub } = $props<Props>();
 
-  const t = $derived.by(() => TRANSLATIONS[(language as Language) || '简体中文']);
+  const t = $derived(TRANSLATIONS[(language as Language) || '简体中文']);
+  let copiedSurveyId: string | null = null;
+
+  // Function to determine text color based on background color brightness
+  const getTextColor = (bgColor: string): string => {
+    // Convert hex color to RGB
+    const hex = bgColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    
+    // Calculate relative luminance (WCAG formula)
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    
+    // Return white for dark backgrounds, black for light backgrounds
+    return luminance > 0.5 ? '#000000' : '#ffffff';
+  };
+
+  // Derived text color based on primaryColor
+  const buttonTextColor = $derived(getTextColor(primaryColor));
+
+  // Generate share link with pub and id parameters
+  const generateShareLink = (surveyId: string) => {
+    const baseUrl = window.location.origin + window.location.pathname;
+    return `${baseUrl}?pub=${userPub}&id=${surveyId}`;
+  };
+
+  // Copy share link to clipboard
+  const copyShareLink = async (surveyId: string) => {
+    const link = generateShareLink(surveyId);
+    try {
+      await navigator.clipboard.writeText(link);
+      copiedSurveyId = surveyId;
+      setTimeout(() => {
+        copiedSurveyId = null;
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
 </script>
 
 <div class="flex-grow flex flex-col p-8 overflow-y-auto bg-slate-50 dark:bg-slate-950">
@@ -28,17 +68,18 @@
     </div>
     <button 
       onclick={onCreateNew}
-      class="px-6 py-3 text-white rounded-2xl font-bold text-sm shadow-lg transition-all flex items-center gap-2"
+      class="px-6 py-3 rounded-2xl font-bold text-sm shadow-lg transition-all flex items-center gap-2"
       style={{ 
         backgroundColor: primaryColor,
+        color: buttonTextColor,
         boxShadow: `0 10px 15px -3px ${primaryColor}33`
       }}
     >
-      <Plus class="w-4 h-4" /> {t.createNew}
+      <Plus class="w-4 h-4" style={{ color: buttonTextColor }} /> {t.createNew}
     </button>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
     {#each surveys as survey}
       <div key={survey.id} class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6 hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/50 transition-all group">
         <div class="flex justify-between items-start mb-4">
@@ -55,11 +96,17 @@
                     onclick={() => onFill(survey.id)}
                     class="p-1.5 rounded-lg transition-colors"
                     style={{ color: primaryColor }}
-                    onmouseenter={(e) => e.currentTarget.style.backgroundColor = `${primaryColor}11`}
-                    onmouseleave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    onmouseenter={(e) => {
+                      e.currentTarget.style.backgroundColor = `${primaryColor}11`;
+                      e.currentTarget.style.color = primaryColor;
+                    }}
+                    onmouseleave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = primaryColor;
+                    }}
                     title="填写问卷"
                   >
-                    <Play class="w-4 h-4" />
+                    <Play class="w-4 h-4" style={{ color: primaryColor }} />
                   </button>
             {/if}
             <button class="text-slate-300 dark:text-slate-600 hover:text-slate-600 dark:hover:text-slate-400 transition-colors">
@@ -124,6 +171,16 @@
             }}
           >
             <BarChart3 class="w-4 h-4" />
+          </button>
+          <button 
+            onclick={() => copyShareLink(survey.id)}
+            class="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition-all hover:bg-green-50 dark:hover:bg-green-900/30 hover:text-green-500 dark:hover:text-green-400"
+          >
+            {#if copiedSurveyId === survey.id}
+              <Check class="w-4 h-4 text-green-500" />
+            {:else}
+              <Share2 class="w-4 h-4" />
+            {/if}
           </button>
           <button 
             onclick={() => onDelete(survey.id)}

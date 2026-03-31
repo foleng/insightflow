@@ -48,6 +48,7 @@
             class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none"
           >
             <option value="简体中文">简体中文</option>
+            <option value="繁體中文">繁體中文</option>
             <option value="English">English</option>
           </select>
         </div>

@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { ChevronRight, Lock, Layers, User } from 'lucide-svelte';
+  import { ChevronRight, Lock, Layers, User, ArrowLeft } from 'lucide-svelte';
   import { TRANSLATIONS } from '../i18n';
   import type { Language } from '../i18n';
+  import Gun from 'gun';
+  import 'gun/sea';
 
   interface Props {
-    onLogin: (user: { name: string; email: string }) => void;
+    onLogin: (user: { name: string; pub: string }) => void;
     language: string;
     primaryColor: string;
   }
@@ -15,23 +17,52 @@
   let password = $state('');
   let error = $state('');
   let isLoading = $state(false);
+  let isRegisterMode = $state(false);
 
   const t = $derived.by(() => TRANSLATIONS[(language as Language) || '简体中文']);
+  const gun = Gun(['https://gun-manhattan.herokuapp.com/gun']);
+  const userInstance = gun.user();
 
-  const handleSubmit = (e: Event) => {
+  const handleLogin = (e: Event) => {
     e.preventDefault();
     error = '';
     isLoading = true;
 
-    // Mock login logic
-    setTimeout(() => {
-      if (username === 'admin' && password === 'admin') {
-        onLogin({ name: 'Administrator', email: 'admin@surveypro.com' });
+    userInstance.auth(username, password, (ack: any) => {
+      isLoading = false;
+      if (ack.err) {
+        error = t.loginFailed + ': ' + ack.err;
       } else {
-        error = t.invalidCredentials;
-        isLoading = false;
+        onLogin({ name: username, pub: ack.pub });
       }
-    }, 1000);
+    });
+  };
+
+  const handleRegister = (e: Event) => {
+    e.preventDefault();
+    error = '';
+    isLoading = true;
+
+    userInstance.create(username, password, (ack: any) => {
+      isLoading = false;
+      if (ack.err) {
+        error = t.registerFailed + ': ' + ack.err;
+      } else {
+        // 注册成功后自动登录
+        userInstance.auth(username, password, (authAck: any) => {
+          if (authAck.err) {
+            error = t.loginFailed + ': ' + authAck.err;
+          } else {
+            onLogin({ name: username, pub: authAck.pub });
+          }
+        });
+      }
+    });
+  };
+
+  const toggleMode = () => {
+    isRegisterMode = !isRegisterMode;
+    error = '';
   };
 </script>
 
@@ -51,11 +82,15 @@
       </div>
 
       <div class="mb-8">
-        <h2 class="text-xl font-black text-slate-800 dark:text-slate-200">{t.login}</h2>
-        <p class="text-sm text-slate-400 mt-1">{t.loginDesc}</p>
+        <h2 class="text-xl font-black text-slate-800 dark:text-slate-200">
+          {isRegisterMode ? t.register : t.login}
+        </h2>
+        <p class="text-sm text-slate-400 mt-1">
+          {isRegisterMode ? t.registerDesc : t.loginDesc}
+        </p>
       </div>
 
-      <form onsubmit={handleSubmit} class="space-y-5">
+      <form onsubmit={isRegisterMode ? handleRegister : handleLogin} class="space-y-5">
         <div class="space-y-2">
           <label class="text-xs font-bold text-slate-500 ml-1">{t.username}</label>
           <div class="relative group">
@@ -65,7 +100,7 @@
             <input 
               type="text" 
               bind:value={username}
-              placeholder="admin"
+              placeholder={isRegisterMode ? t.usernamePlaceholder : t.usernamePlaceholder}
               class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-2xl py-3 pl-11 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-blue-500/20"
               required
             />
@@ -81,7 +116,7 @@
             <input 
               type="password" 
               bind:value={password}
-              placeholder="admin"
+              placeholder={isRegisterMode ? t.passwordPlaceholder : t.passwordPlaceholder}
               class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 rounded-2xl py-3 pl-11 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-blue-500/20"
               required
             />
@@ -105,11 +140,26 @@
           {#if isLoading}
             <div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           {:else}
-            <span>{t.login}</span>
+            <span>{isRegisterMode ? t.register : t.login}</span>
             <ChevronRight class="w-4 h-4" />
           {/if}
         </button>
       </form>
+
+      <div class="mt-6 text-center">
+        <button 
+          onclick={toggleMode}
+          class="flex items-center justify-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
+        >
+          {#if isRegisterMode}
+              <ArrowLeft class="w-3 h-3" />
+              <span>{t.backToLogin}</span>
+          {:else}
+              <span>{t.noAccount}</span>
+              <ChevronRight class="w-3 h-3" />
+          {/if}
+        </button>
+      </div>
     </div>
     
     <div class="bg-slate-50 dark:bg-slate-800/50 p-6 text-center border-t border-slate-100 dark:border-slate-800">
