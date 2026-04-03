@@ -50,7 +50,127 @@
   const loadSurveysFromStorage = (): Survey[] => {
     try {
       const data = localStorage.getItem('insightflow_surveys');
-      return data ? JSON.parse(data) : [];
+      let surveys = data ? JSON.parse(data) : [];
+      
+      // 检查是否已存在默认问卷
+      const hasDefaultSurvey = surveys.some((survey: Survey) => survey.id === 's_default_requirements');
+      
+      if (!hasDefaultSurvey) {
+        // 添加默认的软件开发需求收集问卷
+        const defaultSurvey: Survey = {
+          id: 's_default_requirements',
+          title: '软件开发需求收集',
+          description: '请填写以下信息，帮助我们更好地理解您的软件开发需求',
+          status: 'published',
+          createdAt: new Date().toISOString().split('T')[0],
+          responsesCount: 0,
+          schema: {
+            sections: [
+              {
+                id: 'sec_basic',
+                title: '项目基本信息',
+                fields: [
+                  {
+                    id: 'fld_project_name',
+                    type: 'input',
+                    label: '项目名称',
+                    required: true,
+                    logic: ''
+                  },
+                  {
+                    id: 'fld_project_type',
+                    type: 'radio',
+                    label: '项目类型',
+                    required: true,
+                    logic: ''
+                  },
+                  {
+                    id: 'fld_budget',
+                    type: 'select',
+                    label: '项目预算范围',
+                    required: true,
+                    logic: ''
+                  }
+                ]
+              },
+              {
+                id: 'sec_features',
+                title: '功能需求',
+                fields: [
+                  {
+                    id: 'fld_core_features',
+                    type: 'textarea',
+                    label: '核心功能描述',
+                    required: true,
+                    logic: ''
+                  },
+                  {
+                    id: 'fld_priority',
+                    type: 'checkbox',
+                    label: '优先级功能',
+                    required: false,
+                    logic: ''
+                  },
+                  {
+                    id: 'fld_tech_stack',
+                    type: 'select',
+                    label: '技术栈要求',
+                    required: true,
+                    logic: ''
+                  },
+                  {
+                    id: 'fld_integration',
+                    type: 'input',
+                    label: '系统集成需求',
+                    required: false,
+                    logic: ''
+                  }
+                ]
+              },
+              {
+                id: 'sec_timeline',
+                title: '项目时间和资源',
+                fields: [
+                  {
+                    id: 'fld_delivery_date',
+                    type: 'date',
+                    label: '期望交付时间',
+                    required: true,
+                    logic: ''
+                  },
+                  {
+                    id: 'fld_team_size',
+                    type: 'number',
+                    label: '项目团队规模',
+                    required: true,
+                    logic: ''
+                  },
+                  {
+                    id: 'fld_other',
+                    type: 'textarea',
+                    label: '其他特殊要求',
+                    required: false,
+                    logic: ''
+                  }
+                ]
+              }
+            ]
+          },
+          version: 1,
+          theme: {
+            primaryColor: '#2563eb',
+            backgroundColor: '#ffffff',
+            textColor: '#1e293b',
+            buttonTextColor: '#ffffff'
+          }
+        };
+        
+        surveys = [defaultSurvey, ...surveys];
+        // 保存到 localStorage
+        localStorage.setItem('insightflow_surveys', JSON.stringify(surveys));
+      }
+      
+      return surveys;
     } catch {
       return [];
     }

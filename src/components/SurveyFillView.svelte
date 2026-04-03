@@ -109,6 +109,51 @@
     if (!field.logicValue) return !!targetValue;
     return targetValue === field.logicValue;
   };
+
+  // 校验必填项
+  let invalidFields = $state<Set<string>>(new Set());
+  
+  const validateForm = (): boolean => {
+    invalidFields = new Set();
+    let isValid = true;
+    
+    activeSchema.sections.forEach(section => {
+      section.fields.forEach(field => {
+        if (isFieldVisible(field) && field.required) {
+          const value = formData[field.id];
+          
+          // 根据字段类型进行校验
+          if (field.type === 'checkbox') {
+            // 复选框至少选择一个
+            if (!value || (Array.isArray(value) && value.length === 0)) {
+              isValid = false;
+              invalidFields.add(field.id);
+            }
+          } else if (field.type === 'rating') {
+            // 评分至少选择1星
+            if (!value || Number(value) === 0) {
+              isValid = false;
+              invalidFields.add(field.id);
+            }
+          } else if (field.type === 'image') {
+            // 图片上传必须上传文件
+            if (!value) {
+              isValid = false;
+              invalidFields.add(field.id);
+            }
+          } else {
+            // 其他类型字段不能为空
+            if (!value || (typeof value === 'string' && value.trim() === '')) {
+              isValid = false;
+              invalidFields.add(field.id);
+            }
+          }
+        }
+      });
+    });
+    
+    return isValid;
+  };
 </script>
 
 <div 
@@ -137,7 +182,7 @@
       <p class="text-lg opacity-70">{survey.description}</p>
     </div>
 
-    <form onsubmit={(e) => { e.preventDefault(); onSubmit(formData); }} class="space-y-16">
+    <form onsubmit={(e) => { e.preventDefault(); if (validateForm()) { onSubmit(formData); } }} class="space-y-16">
       {#each activeSchema.sections as section}
         <div key={section.id} class="space-y-8">
           <div class="flex items-center gap-4">
@@ -161,11 +206,16 @@
                       class="w-full p-4 border rounded-2xl outline-none transition-all"
                       style={{ 
                         backgroundColor: theme.backgroundColor === '#ffffff' ? '#f8fafc' : theme.backgroundColor,
-                        borderColor: theme.textColor + '30',
+                        borderColor: invalidFields.has(field.id) ? '#ef4444' : theme.textColor + '30',
                         color: theme.textColor
                       }}
                       value={formData[field.id] || ''}
-                      oninput={(e) => handleInputChange(field.id, (e.target as HTMLInputElement).value)}
+                      oninput={(e) => {
+                        handleInputChange(field.id, (e.target as HTMLInputElement).value);
+                        if (invalidFields.has(field.id)) {
+                          invalidFields.delete(field.id);
+                        }
+                      }}
                     />
                   {:else if field.type === 'textarea'}
                     <textarea 
@@ -174,7 +224,7 @@
                       class="w-full p-4 border rounded-2xl outline-none transition-all min-h-[120px] resize-none"
                       style={{ 
                         backgroundColor: theme.backgroundColor === '#ffffff' ? '#f8fafc' : theme.backgroundColor,
-                        borderColor: theme.textColor + '30',
+                        borderColor: invalidFields.has(field.id) ? '#ef4444' : theme.textColor + '30',
                         color: theme.textColor
                       }}
                       value={formData[field.id] || ''}
@@ -186,11 +236,16 @@
                       class="w-full p-4 border rounded-2xl outline-none transition-all appearance-none"
                       style={{ 
                         backgroundColor: theme.backgroundColor === '#ffffff' ? '#f8fafc' : theme.backgroundColor,
-                        borderColor: theme.textColor + '30',
+                        borderColor: invalidFields.has(field.id) ? '#ef4444' : theme.textColor + '30',
                         color: theme.textColor
                       }}
                       value={formData[field.id] || ''}
-                      onchange={(e) => handleInputChange(field.id, (e.target as HTMLSelectElement).value)}
+                      onchange={(e) => {
+                        handleInputChange(field.id, (e.target as HTMLSelectElement).value);
+                        if (invalidFields.has(field.id)) {
+                          invalidFields.delete(field.id);
+                        }
+                      }}
                     >
                       <option value="">{t.selectPlaceholder}</option>
                       <option value="opt1">{t.optionA}</option>
@@ -215,7 +270,12 @@
                             class="w-5 h-5"
                             style={{ accentColor: theme.primaryColor }}
                             checked={formData[field.id] === opt}
-                            onchange={() => handleInputChange(field.id, opt)}
+                            onchange={() => {
+                              handleInputChange(field.id, opt);
+                              if (invalidFields.has(field.id)) {
+                                invalidFields.delete(field.id);
+                              }
+                            }}
                           />
                           <span class="text-sm font-medium opacity-80">{opt}</span>
                         </label>
@@ -246,6 +306,9 @@
                               } else {
                                 handleInputChange(field.id, current.filter(item => item !== opt));
                               }
+                              if (invalidFields.has(field.id)) {
+                                invalidFields.delete(field.id);
+                              }
                             }}
                           />
                           <span class="text-sm font-medium opacity-80">{opt}</span>
@@ -259,11 +322,16 @@
                       class="w-full p-4 border rounded-2xl outline-none transition-all"
                       style={{ 
                         backgroundColor: theme.backgroundColor === '#ffffff' ? '#f8fafc' : theme.backgroundColor,
-                        borderColor: theme.textColor + '30',
+                        borderColor: invalidFields.has(field.id) ? '#ef4444' : theme.textColor + '30',
                         color: theme.textColor
                       }}
                       value={formData[field.id] || ''}
-                      onchange={(e) => handleInputChange(field.id, (e.target as HTMLInputElement).value)}
+                      onchange={(e) => {
+                        handleInputChange(field.id, (e.target as HTMLInputElement).value);
+                        if (invalidFields.has(field.id)) {
+                          invalidFields.delete(field.id);
+                        }
+                      }}
                     />
                   {:else if field.type === 'number'}
                     <input 
@@ -273,11 +341,16 @@
                       class="w-full p-4 border rounded-2xl outline-none transition-all"
                       style={{ 
                         backgroundColor: theme.backgroundColor === '#ffffff' ? '#f8fafc' : theme.backgroundColor,
-                        borderColor: theme.textColor + '30',
+                        borderColor: invalidFields.has(field.id) ? '#ef4444' : theme.textColor + '30',
                         color: theme.textColor
                       }}
                       value={formData[field.id] || ''}
-                      oninput={(e) => handleInputChange(field.id, (e.target as HTMLInputElement).value)}
+                      oninput={(e) => {
+                        handleInputChange(field.id, (e.target as HTMLInputElement).value);
+                        if (invalidFields.has(field.id)) {
+                          invalidFields.delete(field.id);
+                        }
+                      }}
                     />
                   {:else if field.type === 'rating'}
                     <div class="flex items-center gap-2">
@@ -289,7 +362,12 @@
                             color: star <= (Number(formData[field.id]) || 0) ? theme.primaryColor : theme.textColor + '30',
                             cursor: 'pointer'
                           }}
-                          onclick={() => handleInputChange(field.id, star)}
+                          onclick={() => {
+                            handleInputChange(field.id, star);
+                            if (invalidFields.has(field.id)) {
+                              invalidFields.delete(field.id);
+                            }
+                          }}
                         >
                           ★
                         </button>
@@ -309,6 +387,9 @@
                               const reader = new FileReader();
                               reader.onloadend = () => {
                                 handleInputChange(field.id, reader.result);
+                                if (invalidFields.has(field.id)) {
+                                  invalidFields.delete(field.id);
+                                }
                               };
                               reader.readAsDataURL(file);
                             }
@@ -318,7 +399,7 @@
                           class="w-full py-10 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-3 transition-all"
                           style={{ 
                             backgroundColor: theme.backgroundColor === '#ffffff' ? '#f8fafc' : theme.backgroundColor,
-                            borderColor: theme.textColor + '15'
+                            borderColor: invalidFields.has(field.id) ? '#ef4444' : theme.textColor + '15'
                           }}
                         >
                           {#if formData[field.id]}
@@ -359,7 +440,11 @@
 
     <div class="mt-20 pt-10 border-t" style={{ borderColor: theme.textColor + '15' }}>
       <button 
-        onclick={() => onSubmit(formData)}
+        onclick={() => {
+          if (validateForm()) {
+            onSubmit(formData);
+          }
+        }}
         class="w-full py-5 rounded-[2rem] font-black text-lg shadow-2xl transition-all transform hover:-translate-y-1"
         style={{ 
           backgroundColor: theme.primaryColor, 
