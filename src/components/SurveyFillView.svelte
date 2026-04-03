@@ -15,7 +15,11 @@
 
   const t = $derived.by(() => TRANSLATIONS[(language as Language) || '简体中文']);
   const activeSchema = $derived.by(() => survey.publishedSchema || survey.schema);
-  const theme = $derived.by(() => survey.theme || { primaryColor: '#2563eb', backgroundColor: '#ffffff', textColor: '#1e293b', buttonTextColor: '#ffffff' });
+  const theme = $derived.by(() => {
+    const finalTheme = survey.theme || { primaryColor: '#2563eb', backgroundColor: '#ffffff', textColor: '#1e293b', buttonTextColor: '#ffffff' };
+    console.log('SurveyFillView theme applied:', finalTheme);
+    return finalTheme;
+  });
 
   let formData = $state<Record<string, any>>({});
   let syncWorker: SharedWorker | null = null;
@@ -149,19 +153,32 @@
                     {field.label} {#if field.required}<span class="text-red-500">*</span>{/if}
                   </label>
                   
-                  {#if field.type === 'input'}
+                  {#if field.type === 'input' || field.type === 'email' || field.type === 'tel' || field.type === 'url'}
                     <input 
-                      type="text" 
+                      type={field.type}
                       id={field.id}
-                      placeholder={t.inputPlaceholder}
+                      placeholder={field.type === 'email' ? '请输入邮箱地址' : field.type === 'tel' ? '请输入电话号码' : field.type === 'url' ? '请输入网址' : t.inputPlaceholder}
                       class="w-full p-4 border rounded-2xl outline-none transition-all"
                       style={{ 
                         backgroundColor: theme.backgroundColor === '#ffffff' ? '#f8fafc' : theme.backgroundColor,
-                        borderColor: theme.textColor + '15',
+                        borderColor: theme.textColor + '30',
                         color: theme.textColor
                       }}
                       value={formData[field.id] || ''}
                       oninput={(e) => handleInputChange(field.id, (e.target as HTMLInputElement).value)}
+                    />
+                  {:else if field.type === 'textarea'}
+                    <textarea 
+                      id={field.id}
+                      placeholder="请输入您的回答..."
+                      class="w-full p-4 border rounded-2xl outline-none transition-all min-h-[120px] resize-none"
+                      style={{ 
+                        backgroundColor: theme.backgroundColor === '#ffffff' ? '#f8fafc' : theme.backgroundColor,
+                        borderColor: theme.textColor + '30',
+                        color: theme.textColor
+                      }}
+                      value={formData[field.id] || ''}
+                      oninput={(e) => handleInputChange(field.id, (e.target as HTMLTextAreaElement).value)}
                     />
                   {:else if field.type === 'select'}
                     <select 
@@ -169,7 +186,7 @@
                       class="w-full p-4 border rounded-2xl outline-none transition-all appearance-none"
                       style={{ 
                         backgroundColor: theme.backgroundColor === '#ffffff' ? '#f8fafc' : theme.backgroundColor,
-                        borderColor: theme.textColor + '15',
+                        borderColor: theme.textColor + '30',
                         color: theme.textColor
                       }}
                       value={formData[field.id] || ''}
@@ -188,7 +205,7 @@
                           class="flex items-center gap-3 p-4 border rounded-2xl cursor-pointer transition-all"
                           style={{ 
                             backgroundColor: formData[field.id] === opt ? theme.primaryColor + '10' : (theme.backgroundColor === '#ffffff' ? '#f8fafc' : theme.backgroundColor),
-                            borderColor: formData[field.id] === opt ? theme.primaryColor : theme.textColor + '15'
+                            borderColor: formData[field.id] === opt ? theme.primaryColor : theme.textColor + '30'
                           }}
                         >
                           <input 
@@ -202,6 +219,80 @@
                           />
                           <span class="text-sm font-medium opacity-80">{opt}</span>
                         </label>
+                      {/each}
+                    </div>
+                  {:else if field.type === 'checkbox'}
+                    <div class="space-y-3">
+                      {#each [t.optionA, t.optionB, t.optionC] as opt, idx}
+                        <label 
+                          for={`${field.id}-${opt}`} 
+                          class="flex items-center gap-3 p-4 border rounded-2xl cursor-pointer transition-all"
+                          style={{ 
+                            backgroundColor: (formData[field.id] as string[] || []).includes(opt) ? theme.primaryColor + '10' : (theme.backgroundColor === '#ffffff' ? '#f8fafc' : theme.backgroundColor),
+                            borderColor: (formData[field.id] as string[] || []).includes(opt) ? theme.primaryColor : theme.textColor + '30'
+                          }}
+                        >
+                          <input 
+                            type="checkbox" 
+                            id={`${field.id}-${opt}`}
+                            name={field.id}
+                            class="w-5 h-5"
+                            style={{ accentColor: theme.primaryColor }}
+                            checked={(formData[field.id] as string[] || []).includes(opt)}
+                            onchange={(e) => {
+                              const current = formData[field.id] as string[] || [];
+                              if ((e.target as HTMLInputElement).checked) {
+                                handleInputChange(field.id, [...current, opt]);
+                              } else {
+                                handleInputChange(field.id, current.filter(item => item !== opt));
+                              }
+                            }}
+                          />
+                          <span class="text-sm font-medium opacity-80">{opt}</span>
+                        </label>
+                      {/each}
+                    </div>
+                  {:else if field.type === 'date'}
+                    <input 
+                      type="date"
+                      id={field.id}
+                      class="w-full p-4 border rounded-2xl outline-none transition-all"
+                      style={{ 
+                        backgroundColor: theme.backgroundColor === '#ffffff' ? '#f8fafc' : theme.backgroundColor,
+                        borderColor: theme.textColor + '30',
+                        color: theme.textColor
+                      }}
+                      value={formData[field.id] || ''}
+                      onchange={(e) => handleInputChange(field.id, (e.target as HTMLInputElement).value)}
+                    />
+                  {:else if field.type === 'number'}
+                    <input 
+                      type="number"
+                      id={field.id}
+                      placeholder="请输入数字"
+                      class="w-full p-4 border rounded-2xl outline-none transition-all"
+                      style={{ 
+                        backgroundColor: theme.backgroundColor === '#ffffff' ? '#f8fafc' : theme.backgroundColor,
+                        borderColor: theme.textColor + '30',
+                        color: theme.textColor
+                      }}
+                      value={formData[field.id] || ''}
+                      oninput={(e) => handleInputChange(field.id, (e.target as HTMLInputElement).value)}
+                    />
+                  {:else if field.type === 'rating'}
+                    <div class="flex items-center gap-2">
+                      {#each [1, 2, 3, 4, 5] as star}
+                        <button 
+                          type="button"
+                          class="text-2xl transition-colors"
+                          style={{ 
+                            color: star <= (Number(formData[field.id]) || 0) ? theme.primaryColor : theme.textColor + '30',
+                            cursor: 'pointer'
+                          }}
+                          onclick={() => handleInputChange(field.id, star)}
+                        >
+                          ★
+                        </button>
                       {/each}
                     </div>
                   {:else if field.type === 'image'}

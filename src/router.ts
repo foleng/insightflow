@@ -30,6 +30,21 @@ export function initRouter(
 ) {
   if (typeof window === 'undefined') return;
 
+  // 检查 URL 查询参数，处理分享链接
+  const handleQueryParams = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const surveyId = urlParams.get('id');
+    
+    if (surveyId && window.location.pathname !== '/fill') {
+      // 如果有 id 参数且不是已经在 fill 页面，先清空查询参数再跳转
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+      page.show(`/fill/${surveyId}`);
+      return true;
+    }
+    return false;
+  };
+
   // 注册路由
   routes.forEach(route => {
     page(route.path, (context) => {
@@ -62,6 +77,11 @@ export function initRouter(
 
   // 启动路由
   page.start();
+  
+  // 路由启动后处理查询参数（延迟执行确保路由系统已初始化）
+  setTimeout(() => {
+    handleQueryParams();
+  }, 0);
 }
 
 // 路由导航函数

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowLeft, Save, Play, Type, ListIcon, CheckCircle, ImageIcon, Plus, MousePointer2, Radio } from 'lucide-svelte';
+  import { ArrowLeft, Save, Play, Type, ListIcon, CheckCircle, ImageIcon, Plus, MousePointer2, Radio, FileText, CheckSquare, Calendar, Hash, Star, Mail, Phone, Link } from 'lucide-svelte';
   import { TRANSLATIONS } from '../i18n';
   import type { Language } from '../i18n';
   import type { Field, Survey } from '../types';
@@ -18,6 +18,17 @@
     primaryColor: string;
     language: string;
   }
+
+  // 添加主题变更的防抖处理
+  let themeUpdateTimeout: number | null = null;
+  const debouncedThemeUpdate = (updates: Partial<Survey>) => {
+    if (themeUpdateTimeout) {
+      clearTimeout(themeUpdateTimeout);
+    }
+    themeUpdateTimeout = window.setTimeout(() => {
+      onUpdateSurvey(updates);
+    }, 100);
+  };
 
   let { 
     survey, 
@@ -85,10 +96,20 @@
         </button>
         <button 
           onclick={() => {
+            // 调试日志：查看发布时的数据
+            console.log('Publishing survey with theme:', survey.theme);
+            
             onUpdateSurvey({ 
               status: 'published',
               publishedSchema: JSON.parse(JSON.stringify(survey.schema)),
-              version: (survey.version || 1) + 1
+              version: (survey.version || 1) + 1,
+              // 确保 theme 也被保存
+              theme: survey.theme || {
+                primaryColor: '#2563eb',
+                backgroundColor: '#ffffff',
+                textColor: '#1e293b',
+                buttonTextColor: '#ffffff'
+              }
             });
             onBack();
           }}
@@ -143,6 +164,16 @@
               <div 
                 draggable="true"
                 class="p-3 border border-slate-100 rounded-xl cursor-move hover:border-blue-500 hover:bg-blue-50 transition-all"
+                ondragstart={(e) => e.dataTransfer.setData('type', 'textarea')}
+              >
+                <div class="flex items-center gap-2">
+                  <FileText class="w-4 h-4" style={{ color: primaryColor }} />
+                  <span class="text-sm font-bold">多行文本输入</span>
+                </div>
+              </div>
+              <div 
+                draggable="true"
+                class="p-3 border border-slate-100 rounded-xl cursor-move hover:border-blue-500 hover:bg-blue-50 transition-all"
                 ondragstart={(e) => e.dataTransfer.setData('type', 'select')}
               >
                 <div class="flex items-center gap-2">
@@ -158,6 +189,76 @@
                 <div class="flex items-center gap-2">
                   <Radio class="w-4 h-4" style={{ color: primaryColor }} />
                   <span class="text-sm font-bold">{t.radioSelect}</span>
+                </div>
+              </div>
+              <div 
+                draggable="true"
+                class="p-3 border border-slate-100 rounded-xl cursor-move hover:border-blue-500 hover:bg-blue-50 transition-all"
+                ondragstart={(e) => e.dataTransfer.setData('type', 'checkbox')}
+              >
+                <div class="flex items-center gap-2">
+                  <CheckSquare class="w-4 h-4" style={{ color: primaryColor }} />
+                  <span class="text-sm font-bold">复选框组</span>
+                </div>
+              </div>
+              <div 
+                draggable="true"
+                class="p-3 border border-slate-100 rounded-xl cursor-move hover:border-blue-500 hover:bg-blue-50 transition-all"
+                ondragstart={(e) => e.dataTransfer.setData('type', 'date')}
+              >
+                <div class="flex items-center gap-2">
+                  <Calendar class="w-4 h-4" style={{ color: primaryColor }} />
+                  <span class="text-sm font-bold">日期选择器</span>
+                </div>
+              </div>
+              <div 
+                draggable="true"
+                class="p-3 border border-slate-100 rounded-xl cursor-move hover:border-blue-500 hover:bg-blue-50 transition-all"
+                ondragstart={(e) => e.dataTransfer.setData('type', 'number')}
+              >
+                <div class="flex items-center gap-2">
+                  <Hash class="w-4 h-4" style={{ color: primaryColor }} />
+                  <span class="text-sm font-bold">数字输入</span>
+                </div>
+              </div>
+              <div 
+                draggable="true"
+                class="p-3 border border-slate-100 rounded-xl cursor-move hover:border-blue-500 hover:bg-blue-50 transition-all"
+                ondragstart={(e) => e.dataTransfer.setData('type', 'rating')}
+              >
+                <div class="flex items-center gap-2">
+                  <Star class="w-4 h-4" style={{ color: primaryColor }} />
+                  <span class="text-sm font-bold">星级评分</span>
+                </div>
+              </div>
+              <div 
+                draggable="true"
+                class="p-3 border border-slate-100 rounded-xl cursor-move hover:border-blue-500 hover:bg-blue-50 transition-all"
+                ondragstart={(e) => e.dataTransfer.setData('type', 'email')}
+              >
+                <div class="flex items-center gap-2">
+                  <Mail class="w-4 h-4" style={{ color: primaryColor }} />
+                  <span class="text-sm font-bold">邮箱输入</span>
+                </div>
+              </div>
+              <div 
+                draggable="true"
+                class="p-3 border border-slate-100 rounded-xl cursor-move hover:border-blue-500 hover:bg-blue-50 transition-all"
+                ondragstart={(e) => e.dataTransfer.setData('type', 'tel')}
+              >
+                <div class="flex items-center gap-2">
+                  <Phone class="w-4 h-4" style={{ color: primaryColor }} />
+                  <span class="text-sm font-bold">电话输入</span>
+                </div>
+              </div>
+              <div 
+                draggable="true"
+                class="p-3 border border-slate-100 rounded-xl cursor-move hover:border-blue-500 hover:bg-blue-50 transition-all"
+                ondragstart={(e) => e.dataTransfer.setData('type', 'url')}
+              >
+                <div class="flex items-center gap-2">
+                  <Link class="w-4 h-4" style={{ color: primaryColor }} />
+                  <span class="text-sm font-bold">网址输入</span>
                 </div>
               </div>
               <div 
@@ -181,7 +282,7 @@
                     key={p.nameKey}
                     onclick={() => {
                       console.log('Applying theme:', p);
-                      onUpdateSurvey({ 
+                      debouncedThemeUpdate({ 
                         theme: { 
                           primaryColor: p.primary, 
                           backgroundColor: p.bg, 
@@ -222,9 +323,17 @@
                   <input 
                     type="color" 
                     value={survey.theme?.[c.key as keyof typeof survey.theme] || '#000000'}
-                    onchange={(e) => onUpdateSurvey({ 
-                      theme: { ...survey.theme, [c.key]: e.target.value } 
-                    })}
+                    onchange={(e) => {
+                      const currentTheme = survey.theme || {
+                        primaryColor: '#2563eb',
+                        backgroundColor: '#ffffff',
+                        textColor: '#1e293b',
+                        buttonTextColor: '#ffffff'
+                      };
+                      debouncedThemeUpdate({ 
+                        theme: { ...currentTheme, [c.key]: e.target.value } 
+                      });
+                    }}
                     class="w-8 h-8 rounded-lg cursor-pointer border-none p-0 bg-transparent"
                   />
                 </div>
@@ -243,16 +352,16 @@
       {#each survey.schema.sections as section}
         <div 
           key={section.id}
-          class="border-2 border-slate-100 rounded-xl p-6 mb-6 transition-all"
+          class="border-2 border-slate-200 rounded-xl p-6 mb-6 transition-all"
           style={{
             backgroundColor: survey.theme?.backgroundColor || '#ffffff',
             borderColor: dragOverSectionId === section.id 
-              ? primaryColor 
+              ? 'rgba(100, 116, 139, 1)' 
               : (selectedSecId === section.id && !selectedFldId 
-                ? primaryColor 
-                : 'rgba(226, 232, 240, 1)'),
+                ? primaryColor || '#2563eb' 
+                : 'rgba(175, 184, 197, 1)'),
             borderStyle: dragOverSectionId === section.id ? 'dashed' : 'solid',
-            ...(dragOverSectionId === section.id ? { backgroundColor: `${primaryColor}10` } : {})
+            ...(dragOverSectionId === section.id ? { backgroundColor: 'rgba(100, 116, 139, 0.05)' } : {})
           }}
           onclick={() => { setSelectedSecId(section.id); setSelectedFldId(null); }}
           ondrop={(e) => {
@@ -277,13 +386,13 @@
             {#each section.fields as field}
               <div 
                 key={field.id}
-                class="p-4 border border-slate-100 rounded-lg"
+                class="p-4 border border-slate-200 rounded-lg"
                 style={{
                   backgroundColor: survey.theme?.backgroundColor || '#ffffff',
                   borderColor: selectedFldId === field.id 
-                    ? primaryColor 
-                    : 'rgba(226, 232, 240, 1)',
-                  ...(selectedFldId === field.id ? { backgroundColor: `${primaryColor}05` } : {})
+                    ? primaryColor || '#2563eb' 
+                    : 'rgba(175, 184, 197, 1)',
+                  ...(selectedFldId === field.id ? { backgroundColor: `${primaryColor || '#2563eb'}05` } : {})
                 }}
                 onclick={(e) => {
                   e.stopPropagation();
@@ -293,8 +402,16 @@
               >
                 <div class="flex items-center gap-2">
                   {#if field.type === 'input'}<Type class="w-4 h-4" style={{ color: primaryColor }} />{/if}
+                  {#if field.type === 'textarea'}<FileText class="w-4 h-4" style={{ color: primaryColor }} />{/if}
                   {#if field.type === 'select'}<ListIcon class="w-4 h-4" style={{ color: primaryColor }} />{/if}
                   {#if field.type === 'radio'}<CheckCircle class="w-4 h-4" style={{ color: primaryColor }} />{/if}
+                  {#if field.type === 'checkbox'}<CheckSquare class="w-4 h-4" style={{ color: primaryColor }} />{/if}
+                  {#if field.type === 'date'}<Calendar class="w-4 h-4" style={{ color: primaryColor }} />{/if}
+                  {#if field.type === 'number'}<Hash class="w-4 h-4" style={{ color: primaryColor }} />{/if}
+                  {#if field.type === 'rating'}<Star class="w-4 h-4" style={{ color: primaryColor }} />{/if}
+                  {#if field.type === 'email'}<Mail class="w-4 h-4" style={{ color: primaryColor }} />{/if}
+                  {#if field.type === 'tel'}<Phone class="w-4 h-4" style={{ color: primaryColor }} />{/if}
+                  {#if field.type === 'url'}<Link class="w-4 h-4" style={{ color: primaryColor }} />{/if}
                   {#if field.type === 'image'}<ImageIcon class="w-4 h-4" style={{ color: primaryColor }} />{/if}
                   <span>{field.label}</span>
                   {#if field.required}<span class="text-red-500">*</span>{/if}
