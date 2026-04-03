@@ -175,29 +175,31 @@
           <div class="space-y-8">
             <div>
               <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{t.presetPalettes}</h3>
-              <div class="grid grid-cols-2 gap-2">
+              <div class="grid grid-cols-2 gap-3">
                 {#each PREDEFINED_PALETTES as p}
                   <button 
                     key={p.nameKey}
-                    onclick={() => onUpdateSurvey({ 
-                      theme: { 
-                        primaryColor: p.primary, 
-                        backgroundColor: p.bg, 
-                        textColor: p.text, 
-                        buttonTextColor: p.btnText 
-                      } 
-                    })}
-                    class="p-2 border border-slate-100 rounded-xl transition-all text-left group"
-                    onmouseenter={(e) => e.currentTarget.style.borderColor = primaryColor}
+                    onclick={() => {
+                      console.log('Applying theme:', p);
+                      onUpdateSurvey({ 
+                        theme: { 
+                          primaryColor: p.primary, 
+                          backgroundColor: p.bg, 
+                          textColor: p.text, 
+                          buttonTextColor: p.btnText 
+                        } 
+                      });
+                    }}
+                    class="p-3 border border-slate-100 rounded-xl transition-all duration-300 text-left group hover:shadow-md"
+                    onmouseenter={(e) => e.currentTarget.style.borderColor = p.primary}
                     onmouseleave={(e) => e.currentTarget.style.borderColor = ''}
                   >
-                    <div class="flex gap-1 mb-2">
-                      <div class="w-3 h-3 rounded-full" style={{ backgroundColor: p.primary }} />
-                      <div class="w-3 h-3 rounded-full border border-slate-100" style={{ backgroundColor: p.bg }} />
+                    <div class="flex gap-2 mb-3">
+                      <div class="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: p.primary }} />
+                      <div class="w-4 h-4 rounded-full border border-slate-200 shadow-sm" style={{ backgroundColor: p.bg }} />
                     </div>
-                    <span class="text-[10px] font-bold text-slate-600 transition-colors" 
-                      style={{ color: 'inherit' }} 
-                      onmouseenter={(e) => e.currentTarget.style.color = primaryColor} 
+                    <span class="text-[10px] font-bold text-slate-600 transition-colors duration-300" 
+                      onmouseenter={(e) => e.currentTarget.style.color = p.primary} 
                       onmouseleave={(e) => e.currentTarget.style.color = ''}
                     >
                       {t[p.nameKey as keyof typeof t]}
@@ -234,18 +236,25 @@
     </aside>
 
     <main 
-      class="flex-grow p-10 overflow-y-auto space-y-10 bg-slate-50"
+      class="flex-grow p-10 overflow-y-auto space-y-10"
+      style={{ backgroundColor: survey.theme?.backgroundColor || '#f8fafc' }}
       onclick={() => { setSelectedSecId(null); setSelectedFldId(null); }}
     >
       {#each survey.schema.sections as section}
         <div 
           key={section.id}
-          class="bg-white border-2 border-slate-100 rounded-xl p-6 mb-6 transition-all"
-          class:border-dashed={dragOverSectionId === section.id}
+          class="border-2 border-slate-100 rounded-xl p-6 mb-6 transition-all"
+          style={{
+            backgroundColor: survey.theme?.backgroundColor || '#ffffff',
+            borderColor: dragOverSectionId === section.id 
+              ? primaryColor 
+              : (selectedSecId === section.id && !selectedFldId 
+                ? primaryColor 
+                : 'rgba(226, 232, 240, 1)'),
+            borderStyle: dragOverSectionId === section.id ? 'dashed' : 'solid',
+            ...(dragOverSectionId === section.id ? { backgroundColor: `${primaryColor}10` } : {})
+          }}
           onclick={() => { setSelectedSecId(section.id); setSelectedFldId(null); }}
-          style={dragOverSectionId === section.id 
-            ? { borderColor: primaryColor, borderStyle: 'dashed', backgroundColor: `${primaryColor}10` } 
-            : (selectedSecId === section.id && !selectedFldId ? { borderColor: primaryColor } : {})}
           ondrop={(e) => {
             dragOverSectionId = null;
             onDrop(e, section.id);
@@ -269,12 +278,18 @@
               <div 
                 key={field.id}
                 class="p-4 border border-slate-100 rounded-lg"
+                style={{
+                  backgroundColor: survey.theme?.backgroundColor || '#ffffff',
+                  borderColor: selectedFldId === field.id 
+                    ? primaryColor 
+                    : 'rgba(226, 232, 240, 1)',
+                  ...(selectedFldId === field.id ? { backgroundColor: `${primaryColor}05` } : {})
+                }}
                 onclick={(e) => {
                   e.stopPropagation();
                   setSelectedSecId(section.id);
                   setSelectedFldId(field.id);
                 }}
-                style={selectedFldId === field.id ? { borderColor: primaryColor, backgroundColor: `${primaryColor}05` } : {}}
               >
                 <div class="flex items-center gap-2">
                   {#if field.type === 'input'}<Type class="w-4 h-4" style={{ color: primaryColor }} />{/if}
