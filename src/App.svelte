@@ -605,14 +605,25 @@
             </nav>
 
             <div class="p-5 mt-auto">
-              <div class="bg-slate-800 rounded-2xl p-5 flex items-center gap-4">
-                <div style="width: 40px; aspect-ratio: 1; border-radius: 50%; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); display: flex; align-items: center; justify-content: center;">
-                  <User class="text-white w-5 h-5" />
+              <div class="bg-slate-800 rounded-2xl p-5">
+                <div class="flex items-center justify-between gap-4 mb-4">
+                  <div class="flex items-center gap-4 flex-1 min-w-0">
+                    <div style="width: 40px; aspect-ratio: 1; border-radius: 50%; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); display: flex; align-items: center; justify-content: center; flex-shrink-0">
+                      <User class="text-white w-5 h-5" />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-sm font-semibold truncate">{userState?.name}</div>
+                      <div class="text-xs opacity-50">企业版会员</div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div class="text-sm font-semibold">{userState?.name}</div>
-                  <div class="text-xs opacity-50">企业版会员</div>
-                </div>
+                <button 
+                  onclick={handleLogout}
+                  class="w-full py-2.5 px-4 rounded-xl bg-slate-700 hover:bg-slate-600 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                >
+                  <LogOut class="w-4 h-4" />
+                  登出
+                </button>
               </div>
             </div>
           </aside>

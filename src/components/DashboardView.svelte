@@ -85,7 +85,13 @@
               {survey.status === 'published' ? '已发布' : '草稿'}
             </span>
             {#if survey.status === 'published'}
-              <Play class="text-green-500 w-4 h-4" />
+              <button 
+                onclick={() => onFill(survey.id)}
+                class="text-green-500 w-4 h-4 cursor-pointer hover:scale-110 transition-transform"
+                title="填写问卷"
+              >
+                <Play class="w-4 h-4" />
+              </button>
             {:else}
               <MoreVertical class="text-slate-300 w-4 h-4 cursor-pointer" />
             {/if}

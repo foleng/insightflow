@@ -47,6 +47,9 @@
   const t = $derived.by(() => TRANSLATIONS[(language as Language) || '简体中文']);
   let leftTab = $state<'components' | 'theme'>('components');
   let dragOverSectionId = $state<string | null>(null);
+  let dragOverFieldId = $state<string | null>(null);
+  let draggedFieldId = $state<string | null>(null);
+  let draggedFieldSectionId = $state<string | null>(null);
   const currentSection = $derived.by(() => survey.schema.sections.find((s: any) => s.id === selectedSecId));
   const currentField = $derived.by(() => currentSection?.fields.find((f: any) => f.id === selectedFldId));
 
@@ -68,6 +71,37 @@
       schema: {
         ...survey.schema,
         sections: survey.schema.sections.map((s: any) => s.id === secId ? { ...s, ...updates } : s)
+      }
+    });
+  };
+
+  const deleteField = (secId: string, fldId: string) => {
+    onUpdateSurvey({
+      schema: {
+        ...survey.schema,
+        sections: survey.schema.sections.map((s: any) => 
+          s.id === secId 
+            ? { ...s, fields: s.fields.filter((f: any) => f.id !== fldId) } 
+            : s
+        )
+      }
+    });
+    setSelectedFldId(null);
+  };
+
+  const reorderFields = (fromSecId: string, fromIndex: number, toSecId: string, toIndex: number) => {
+    const newSections = [...survey.schema.sections];
+    
+    // 从原章节中移除字段
+    const [movedField] = newSections.find(s => s.id === fromSecId)!.fields.splice(fromIndex, 1);
+    
+    // 添加到目标章节
+    newSections.find(s => s.id === toSecId)!.fields.splice(toIndex, 0, movedField);
+    
+    onUpdateSurvey({
+      schema: {
+        ...survey.schema,
+        sections: newSections
       }
     });
   };
@@ -386,18 +420,62 @@
             {#each section.fields as field}
               <div 
                 key={field.id}
-                class="p-4 border border-slate-200 rounded-lg"
+                class="p-4 border border-slate-200 rounded-lg flex items-center justify-between cursor-move"
+                draggable="true"
                 style={{
                   backgroundColor: survey.theme?.backgroundColor || '#ffffff',
-                  borderColor: selectedFldId === field.id 
+                  borderColor: dragOverFieldId === field.id 
+                    ? primaryColor || '#2563eb' 
+                    : selectedFldId === field.id 
                     ? primaryColor || '#2563eb' 
                     : 'rgba(175, 184, 197, 1)',
-                  ...(selectedFldId === field.id ? { backgroundColor: `${primaryColor || '#2563eb'}05` } : {})
+                  borderStyle: dragOverFieldId === field.id ? 'dashed' : 'solid',
+                  ...(selectedFldId === field.id ? { backgroundColor: `${primaryColor || '#2563eb'}05` } : {}),
+                  ...(dragOverFieldId === field.id ? { backgroundColor: `${primaryColor || '#2563eb'}05` } : {})
                 }}
                 onclick={(e) => {
                   e.stopPropagation();
                   setSelectedSecId(section.id);
                   setSelectedFldId(field.id);
+                }}
+                ondragstart={(e) => {
+                  e.dataTransfer.setData('fieldId', field.id);
+                  e.dataTransfer.setData('sectionId', section.id);
+                  draggedFieldId = field.id;
+                  draggedFieldSectionId = section.id;
+                }}
+                ondragover={(e) => {
+                  e.preventDefault();
+                  dragOverFieldId = field.id;
+                }}
+                ondrop={(e) => {
+                  e.preventDefault();
+                  const fromFieldId = e.dataTransfer.getData('fieldId');
+                  const fromSectionId = e.dataTransfer.getData('sectionId');
+                  
+                  if (fromFieldId !== field.id) {
+                    const fromSection = survey.schema.sections.find((s: any) => s.id === fromSectionId);
+                    const toSection = survey.schema.sections.find((s: any) => s.id === section.id);
+                    
+                    if (fromSection && toSection) {
+                      const fromIndex = fromSection.fields.findIndex((f: any) => f.id === fromFieldId);
+                      const toIndex = toSection.fields.findIndex((f: any) => f.id === field.id);
+                      
+                      reorderFields(fromSectionId, fromIndex, section.id, toIndex);
+                    }
+                  }
+                  
+                  dragOverFieldId = null;
+                  draggedFieldId = null;
+                  draggedFieldSectionId = null;
+                }}
+                ondragleave={(e) => {
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  const x = e.clientX;
+                  const y = e.clientY;
+                  if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+                    dragOverFieldId = null;
+                  }
                 }}
               >
                 <div class="flex items-center gap-2">
@@ -416,6 +494,18 @@
                   <span>{field.label}</span>
                   {#if field.required}<span class="text-red-500">*</span>{/if}
                 </div>
+                <button 
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    deleteField(section.id, field.id);
+                  }}
+                  class="opacity-0 hover:opacity-100 transition-opacity text-red-500 hover:text-red-700"
+                  title="删除题目"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
               </div>
             {/each}
           </div>

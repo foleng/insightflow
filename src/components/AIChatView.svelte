@@ -179,6 +179,7 @@
   .container {
     width: 100%;
     height: 100%;
+    min-height: 100vh;
     background: var(--glass-bg);
     backdrop-filter: blur(20px);
     border: 1px solid var(--border-color);
@@ -192,7 +193,6 @@
     display: flex;
     flex-direction: column;
     position: relative;
-    border-right: 1px solid rgba(0, 0, 0, 0.05);
   }
 
   .header {
@@ -321,10 +321,11 @@
   }
 
   .preview-panel {
-    width: 380px;
+    width: 350px;
     background: rgba(255, 255, 255, 0.4);
     display: flex;
     flex-direction: column;
+    border-left: 1px solid rgba(0, 0, 0, 0.05);
   }
 
   .preview-header {
