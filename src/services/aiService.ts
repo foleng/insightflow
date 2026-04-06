@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import type { Survey, Schema, Section, Field, SystemSettings } from '../types';
+import type { Survey, Schema, Section, Field, SystemSettings, ChatHistory, ChatHistoryList, Message } from '../types';
 
 // 从系统设置获取配置
 const getSystemSettings = (): SystemSettings => {
@@ -80,6 +80,8 @@ const initGeminiAI = () => {
   return model;
 };
 
+// 历史对话管理
+
 // 调用 Minimax API
 const callMinimaxAPI = async (prompt: string): Promise<string> => {
   console.log('callMinimaxAPI called');
@@ -141,6 +143,8 @@ const callMinimaxAPI = async (prompt: string): Promise<string> => {
     throw new Error('Invalid Minimax API response format');
   }
 };
+
+
 
 // 生成问卷的提示模板
 const surveyPromptTemplate = `
@@ -333,4 +337,69 @@ export const saveApiKey = (key: string): void => {
 // 获取 API 密钥
 export const getSavedApiKey = (): string | null => {
   return localStorage.getItem('gemini_api_key');
+};
+
+// 历史对话管理导出
+export const saveChatHistory = (chatHistory: ChatHistory): void => {
+  try {
+    const historyList = loadChatHistoryList();
+    const existingIndex = historyList.findIndex(h => h.id === chatHistory.id);
+    
+    if (existingIndex >= 0) {
+      // 更新现有对话
+      historyList[existingIndex] = chatHistory;
+    } else {
+      // 添加新对话
+      historyList.push(chatHistory);
+    }
+    
+    // 限制历史对话数量
+    const MAX_HISTORY = 20;
+    const trimmedHistory = historyList.slice(-MAX_HISTORY);
+    
+    localStorage.setItem('insightflow_chat_history', JSON.stringify(trimmedHistory));
+  } catch (error) {
+    console.error('Error saving chat history:', error);
+  }
+};
+
+export const loadChatHistoryList = (): ChatHistoryList => {
+  try {
+    const stored = localStorage.getItem('insightflow_chat_history');
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Error loading chat history:', error);
+    return [];
+  }
+};
+
+export const loadChatHistory = (id: string): ChatHistory | null => {
+  try {
+    const historyList = loadChatHistoryList();
+    return historyList.find(h => h.id === id) || null;
+  } catch (error) {
+    console.error('Error loading chat history:', error);
+    return null;
+  }
+};
+
+export const createNewChat = (): ChatHistory => {
+  return {
+    id: `chat_${Date.now()}`,
+    title: '新对话',
+    messages: [],
+    generatedSurvey: null,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+};
+
+export const deleteChatHistory = (id: string): void => {
+  try {
+    const historyList = loadChatHistoryList();
+    const filteredHistory = historyList.filter(h => h.id !== id);
+    localStorage.setItem('insightflow_chat_history', JSON.stringify(filteredHistory));
+  } catch (error) {
+    console.error('Error deleting chat history:', error);
+  }
 };

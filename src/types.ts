@@ -63,3 +63,20 @@ export interface Survey {
 }
 
 export type ViewType = 'dashboard' | 'editor' | 'analytics' | 'settings' | 'fill' | 'ai';
+
+export interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+}
+
+export interface ChatHistory {
+  id: string;
+  title: string;
+  messages: Message[];
+  generatedSurvey: Survey | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type ChatHistoryList = ChatHistory[];
