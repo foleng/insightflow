@@ -269,6 +269,38 @@
     };
   });
 
+  // Handle dark mode toggle
+  $effect(() => {
+    const darkMode = systemSettingsState.darkMode;
+    console.log('Dark mode setting changed:', darkMode);
+    
+    // 移除之前可能存在的事件监听器
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    mediaQuery.removeEventListener('change', () => {});
+    
+    if (darkMode === '开启') {
+      console.log('Enabling dark mode');
+      document.documentElement.classList.add('dark');
+    } else if (darkMode === '关闭') {
+      console.log('Disabling dark mode');
+      document.documentElement.classList.remove('dark');
+    } else if (darkMode === '跟随系统') {
+      console.log('Following system preference');
+      // Follow system preference
+      const handleChange = (e) => {
+        console.log('System preference changed:', e.matches);
+        if (e.matches) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      };
+      mediaQuery.addEventListener('change', handleChange);
+      handleChange(mediaQuery);
+      return () => mediaQuery.removeEventListener('change', handleChange);
+    }
+  });
+
   // --- Router Setup ---
   let routerInitialized = false;
   let authChecked = $state(false);
@@ -518,7 +550,7 @@
   @tailwind utilities;
 </style>
 
-<div class="flex h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans overflow-hidden transition-colors duration-300">
+<div class="h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans overflow-hidden">
   {#if viewState === 'login' || !authState}
     <!-- Login View -->
     <LoginView 
@@ -527,194 +559,188 @@
       primaryColor={systemSettingsState.primaryColor}
     />
   {:else}
-        <!-- Sidebar Navigation -->
-        <aside class="w-64 bg-slate-900 text-slate-300 dark:bg-black dark:text-slate-400 flex flex-col shrink-0">
-          <div class="p-6 flex items-center gap-3 text-white font-black italic uppercase tracking-tighter">
-            <div class="w-8 h-8 rounded-lg flex items-center justify-center not-italic" style:background-color={systemSettingsState.primaryColor}>
-              <Layers class="text-white w-5 h-5" />
-            </div>
-            <span class="truncate">{systemSettingsState.systemName}</span>
-          </div>
-
-          <nav class="flex-grow px-4 space-y-1">
-            <NavItem
-              active={viewState === 'dashboard'}
-              label={$t_store.dashboard}
-              activeColor={systemSettingsState.primaryColor}
-              onclick={() => navigateTo('/')}
-            >
-              <LayoutDashboard slot="icon" class="w-4 h-4" />
-            </NavItem>
-            <NavItem
-              active={viewState === 'ai'}
-              label={$t_store.aiChat}
-              activeColor={systemSettingsState.primaryColor}
-              onclick={() => navigateTo('/ai')}
-            >
-              <MessageSquare slot="icon" class="w-4 h-4" />
-            </NavItem>
-            <NavItem
-              active={viewState === 'analytics' && !!activeSurveyIdState}
-              label={$t_store.analytics}
-              activeColor={systemSettingsState.primaryColor}
-              disabled={!activeSurveyIdState}
-              onclick={() => activeSurveyIdState && navigateTo(`/analytics/${activeSurveyIdState}`)}
-            >
-              <BarChart3 slot="icon" class="w-4 h-4" />
-            </NavItem>
-            <NavItem
-              active={viewState === 'settings'}
-              label={$t_store.settings}
-              activeColor={systemSettingsState.primaryColor}
-              onclick={() => navigateTo('/settings')}
-            >
-              <Settings slot="icon" class="w-4 h-4" />
-            </NavItem>
-          </nav>
-
-          <div class="p-6 border-t border-slate-100 dark:border-slate-800">
-            <div class="flex items-center gap-3 mb-4">
-              <div class="w-8 h-8 rounded-full bg-slate-700 dark:bg-slate-800 flex items-center justify-center text-[10px] font-bold">
-                <User class="w-4 h-4" />
-              </div>
-              <div class="flex-grow min-w-0">
-                <p class="text-xs font-bold text-white truncate">{userState?.name}</p>
-                <p class="text-[10px] text-slate-500 dark:text-slate-600 truncate">{userState?.email}</p>
+    <div class="h-full w-full flex overflow-hidden">
+          <!-- Sidebar Navigation -->
+          <aside class="w-64 bg-slate-900 text-white flex flex-col shrink-0">
+            <div class="p-10">
+              <div class="text-xl font-black mb-12 bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent">
+                INSIGHTFLOW
               </div>
             </div>
-            <button 
-              onclick={handleLogout}
-              class="w-full flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all group"
-            >
-              <LogOut class="w-4 h-4 transition-transform group-hover:scale-110" />
-              <span class="text-xs font-bold">{$t_store.logout}</span>
-            </button>
-          </div>
-        </aside>
 
-        <!-- Main Content Area -->
-        <main class="flex-grow flex flex-col overflow-hidden">
-          {#if viewState === 'dashboard'}
-            <DashboardView 
-              surveys={surveysState} 
-              onCreateNew={handleCreateNew}
-              onEdit={handleEdit}
-              onViewStats={handleViewStats}
-              onDelete={handleDelete}
-              onFill={handleFill}
-              primaryColor={systemSettingsState.primaryColor}
-              language={systemSettingsState.language}
-              userPub={userState?.pub}
-            />
-          {:else if viewState === 'ai'}
-            <AIChatView 
-              onGenerate={(survey) => {
-                // 保存生成的问卷
-                const newSurvey: Survey = {
-                  ...survey,
-                  id: `s_${Date.now()}`
-                };
-                surveys.update(prev => [newSurvey, ...prev]);
-                // 导航到编辑器
-                activeSurveyId.set(newSurvey.id);
-                navigateTo(`/editor/${newSurvey.id}`);
-              }}
-              onBack={() => navigateTo('/')}
-            />
-          {:else if viewState === 'editor'} 
-            {#if activeSurveyState}
-              <EditorView 
+            <nav class="flex-grow px-5 space-y-2">
+              <NavItem
+                active={viewState === 'dashboard'}
+                label={$t_store.dashboard}
+                activeColor={systemSettingsState.primaryColor}
+                onclick={() => navigateTo('/')}
+              >
+                <LayoutDashboard slot="icon" class="w-5 h-5" />
+              </NavItem>
+              <NavItem
+                active={viewState === 'ai'}
+                label={$t_store.aiChat}
+                activeColor={systemSettingsState.primaryColor}
+                onclick={() => navigateTo('/ai')}
+              >
+                <MessageSquare slot="icon" class="w-5 h-5" />
+              </NavItem>
+              <NavItem
+                active={viewState === 'analytics' && !!activeSurveyIdState}
+                label={$t_store.analytics}
+                activeColor={systemSettingsState.primaryColor}
+                disabled={!activeSurveyIdState}
+                onclick={() => activeSurveyIdState && navigateTo(`/analytics/${activeSurveyIdState}`)}
+              >
+                <BarChart3 slot="icon" class="w-5 h-5" />
+              </NavItem>
+              <NavItem
+                active={viewState === 'settings'}
+                label={$t_store.settings}
+                activeColor={systemSettingsState.primaryColor}
+                onclick={() => navigateTo('/settings')}
+              >
+                <Settings slot="icon" class="w-5 h-5" />
+              </NavItem>
+            </nav>
+
+            <div class="p-5 mt-auto">
+              <div class="bg-slate-800 rounded-2xl p-5 flex items-center gap-4">
+                <div style="width: 40px; aspect-ratio: 1; border-radius: 50%; background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); display: flex; align-items: center; justify-content: center;">
+                  <User class="text-white w-5 h-5" />
+                </div>
+                <div>
+                  <div class="text-sm font-semibold">{userState?.name}</div>
+                  <div class="text-xs opacity-50">企业版会员</div>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          <!-- Main Content Area -->
+          <main class="flex-grow flex flex-col">
+            {#if viewState === 'dashboard'}
+              <DashboardView 
+                surveys={surveysState} 
+                onCreateNew={handleCreateNew}
+                onEdit={handleEdit}
+                onViewStats={handleViewStats}
+                onDelete={handleDelete}
+                onFill={handleFill}
+                primaryColor={systemSettingsState.primaryColor}
+                language={systemSettingsState.language}
+                userPub={userState?.pub}
+              />
+            {:else if viewState === 'ai'}
+              <AIChatView 
+                onGenerate={(survey) => {
+                  // 保存生成的问卷
+                  const newSurvey: Survey = {
+                    ...survey,
+                    id: `s_${Date.now()}`
+                  };
+                  surveys.update(prev => [newSurvey, ...prev]);
+                  // 导航到编辑器
+                  activeSurveyId.set(newSurvey.id);
+                  navigateTo(`/editor/${newSurvey.id}`);
+                }}
+                onBack={() => navigateTo('/')}
+              />
+            {:else if viewState === 'editor'} 
+              {#if activeSurveyState}
+                <EditorView 
+                  survey={activeSurveyState}
+                  onBack={() => navigateTo('/')}
+                  onUpdateSurvey={updateActiveSurvey}
+                  selectedSecId={$selectedSecId}
+                  setSelectedSecId={selectedSecId.set}
+                  selectedFldId={$selectedFldId}
+                  setSelectedFldId={selectedFldId.set}
+                  addSection={addSection}
+                  onDrop={onDrop}
+                  primaryColor={systemSettingsState.primaryColor}
+                  language={systemSettingsState.language}
+                />
+              {:else}
+                <div class="flex items-center justify-center h-full">
+                  <div class="text-center">
+                    <p class="text-slate-500 mb-4">问卷未找到</p>
+                    <button 
+                      onclick={() => navigateTo('/')}
+                      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      返回首页
+                    </button>
+                  </div>
+                </div>
+              {/if}
+            {:else if viewState === 'analytics' && activeSurveyState}
+              <AnalyticsView 
                 survey={activeSurveyState}
                 onBack={() => navigateTo('/')}
-                onUpdateSurvey={updateActiveSurvey}
-                selectedSecId={$selectedSecId}
-                setSelectedSecId={selectedSecId.set}
-                selectedFldId={$selectedFldId}
-                setSelectedFldId={selectedFldId.set}
-                addSection={addSection}
-                onDrop={onDrop}
                 primaryColor={systemSettingsState.primaryColor}
                 language={systemSettingsState.language}
               />
-            {:else}
-              <div class="flex items-center justify-center h-full">
-                <div class="text-center">
-                  <p class="text-slate-500 mb-4">问卷未找到</p>
-                  <button 
-                    onclick={() => navigateTo('/')}
-                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                  >
-                    返回首页
-                  </button>
-                </div>
-              </div>
-            {/if}
-          {:else if viewState === 'analytics' && activeSurveyState}
-            <AnalyticsView 
-              survey={activeSurveyState}
-              onBack={() => navigateTo('/')}
-              primaryColor={systemSettingsState.primaryColor}
-              language={systemSettingsState.language}
-            />
-          {:else if viewState === 'settings'}
-            <SettingsView 
-              settings={systemSettingsState}
-              onUpdate={(s) => systemSettings.set(s)}
-              language={systemSettingsState.language}
-            />
-          {:else if viewState === 'fill' && activeSurveyState}
-            <SurveyFillView 
-              survey={activeSurveyState}
-              onBack={() => authState ? navigateTo('/') : navigateTo('/login')}
-              onSubmit={(data: any) => {
-                console.log('Survey submitted:', JSON.parse(JSON.stringify(data)));
-                
-                // 增加问卷回复数
-                const currentSurvey = surveysState.find(s => s.id === activeSurveyIdState);
-                if (currentSurvey) {
-                  const updatedSurvey = {
-                    ...currentSurvey,
-                    responsesCount: (currentSurvey.responsesCount || 0) + 1
-                  };
-                  surveys.update(prev => prev.map(s => s.id === activeSurveyIdState ? updatedSurvey : s));
+            {:else if viewState === 'settings'}
+              <SettingsView 
+                settings={systemSettingsState}
+                onUpdate={(s) => systemSettings.set(s)}
+                language={systemSettingsState.language}
+              />
+            {:else if viewState === 'fill' && activeSurveyState}
+              <SurveyFillView 
+                survey={activeSurveyState}
+                onBack={() => authState ? navigateTo('/') : navigateTo('/login')}
+                onSubmit={(data: any) => {
+                  console.log('Survey submitted:', JSON.parse(JSON.stringify(data)));
                   
-                  // 保存回复数据到 localStorage（带错误处理）
-                  try {
-                    const responsesKey = `insightflow_responses_${activeSurveyIdState}`;
-                    const existingResponses = JSON.parse(localStorage.getItem(responsesKey) || '[]');
-                    existingResponses.push({
-                      data,
-                      submittedAt: new Date().toISOString()
-                    });
-                    localStorage.setItem(responsesKey, JSON.stringify(existingResponses));
-                  } catch (e) {
-                    console.error('Failed to save response:', e);
-                    // 如果 localStorage 满了，尝试清理旧数据
-                    if (e instanceof DOMException && e.name === 'QuotaExceededError') {
-                      console.warn('Storage quota exceeded, cleaning up old data...');
-                      // 清理超过 30 天的旧数据
-                      cleanupOldResponses();
-                      // 重试保存
-                      try {
-                        const responsesKey = `insightflow_responses_${activeSurveyIdState}`;
-                        const existingResponses = JSON.parse(localStorage.getItem(responsesKey) || '[]');
-                        existingResponses.push({
-                          data,
-                          submittedAt: new Date().toISOString()
-                        });
-                        localStorage.setItem(responsesKey, JSON.stringify(existingResponses));
-                      } catch (e2) {
-                        console.error('Failed to save response after cleanup:', e2);
+                  // 增加问卷回复数
+                  const currentSurvey = surveysState.find(s => s.id === activeSurveyIdState);
+                  if (currentSurvey) {
+                    const updatedSurvey = {
+                      ...currentSurvey,
+                      responsesCount: (currentSurvey.responsesCount || 0) + 1
+                    };
+                    surveys.update(prev => prev.map(s => s.id === activeSurveyIdState ? updatedSurvey : s));
+                    
+                    // 保存回复数据到 localStorage（带错误处理）
+                    try {
+                      const responsesKey = `insightflow_responses_${activeSurveyIdState}`;
+                      const existingResponses = JSON.parse(localStorage.getItem(responsesKey) || '[]');
+                      existingResponses.push({
+                        data,
+                        submittedAt: new Date().toISOString()
+                      });
+                      localStorage.setItem(responsesKey, JSON.stringify(existingResponses));
+                    } catch (e) {
+                      console.error('Failed to save response:', e);
+                      // 如果 localStorage 满了，尝试清理旧数据
+                      if (e instanceof DOMException && e.name === 'QuotaExceededError') {
+                        console.warn('Storage quota exceeded, cleaning up old data...');
+                        // 清理超过 30 天的旧数据
+                        cleanupOldResponses();
+                        // 重试保存
+                        try {
+                          const responsesKey = `insightflow_responses_${activeSurveyIdState}`;
+                          const existingResponses = JSON.parse(localStorage.getItem(responsesKey) || '[]');
+                          existingResponses.push({
+                            data,
+                            submittedAt: new Date().toISOString()
+                          });
+                          localStorage.setItem(responsesKey, JSON.stringify(existingResponses));
+                        } catch (e2) {
+                          console.error('Failed to save response after cleanup:', e2);
+                        }
                       }
                     }
                   }
-                }
-                
-                authState ? navigateTo('/') : navigateTo('/login');
-              }}
-              language={systemSettingsState.language}
-            />
-          {/if}
-        </main>
-  {/if}
+                  
+                  authState ? navigateTo('/') : navigateTo('/login');
+                }}
+                language={systemSettingsState.language}
+              />
+            {/if}
+          </main>
+        </div>
+    {/if}
 </div>
