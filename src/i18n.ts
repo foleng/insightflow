@@ -120,6 +120,20 @@ export const TRANSLATIONS = {
     registerFailed: "注册失败",
     invalidCredentials: "用户名或密码错误",
     welcomeBack: "欢迎回来",
+    aiChat: "AI 对话生成",
+    aiChatDesc: "通过与 AI 对话来生成问卷",
+    chatPlaceholder: "请描述您需要的问卷，例如：创建一个关于用户满意度的问卷",
+    generateSurvey: "生成问卷",
+    regenerate: "重新生成",
+    loading: "生成中...",
+    aiGenerated: "AI 生成",
+    editGenerated: "编辑生成的问卷",
+    chatHistory: "对话历史",
+    clearHistory: "清空历史",
+    aiError: "AI 生成失败，请重试",
+    surveyGenerated: "问卷生成成功！",
+    noSurveyGenerated: "还没有生成问卷",
+    describeSurvey: "请描述您需要的问卷类型、主题和问题数量等信息"
   },
   "繁體中文": {
     dashboard: "問卷管理",
@@ -242,6 +256,20 @@ export const TRANSLATIONS = {
     registerFailed: "註冊失敗",
     invalidCredentials: "用戶名或密碼錯誤",
     welcomeBack: "歡迎回來",
+    aiChat: "AI 對話生成",
+    aiChatDesc: "通過與 AI 對話來生成問卷",
+    chatPlaceholder: "請描述您需要的問卷，例如：創建一個關於用戶滿意度的問卷",
+    generateSurvey: "生成問卷",
+    regenerate: "重新生成",
+    loading: "生成中...",
+    aiGenerated: "AI 生成",
+    editGenerated: "編輯生成的問卷",
+    chatHistory: "對話歷史",
+    clearHistory: "清空歷史",
+    aiError: "AI 生成失敗，請重試",
+    surveyGenerated: "問卷生成成功！",
+    noSurveyGenerated: "還沒有生成問卷",
+    describeSurvey: "請描述您需要的問卷類型、主題和問題數量等信息"
   },
   "English": {
     dashboard: "Dashboard",
@@ -364,6 +392,20 @@ export const TRANSLATIONS = {
     registerFailed: "Registration Failed",
     invalidCredentials: "Invalid username or password",
     welcomeBack: "Welcome back",
+    aiChat: "AI Chat Generate",
+    aiChatDesc: "Generate surveys through AI conversation",
+    chatPlaceholder: "Describe your survey needs, e.g., Create a customer satisfaction survey",
+    generateSurvey: "Generate Survey",
+    regenerate: "Regenerate",
+    loading: "Generating...",
+    aiGenerated: "AI Generated",
+    editGenerated: "Edit Generated Survey",
+    chatHistory: "Chat History",
+    clearHistory: "Clear History",
+    aiError: "AI generation failed, please try again",
+    surveyGenerated: "Survey generated successfully!",
+    noSurveyGenerated: "No survey generated yet",
+    describeSurvey: "Please describe your survey type, topic, and number of questions"
   },
   "日本語": {
     dashboard: "ダッシュボード",
@@ -490,3 +532,6 @@ export const TRANSLATIONS = {
 };
 
 export type Language = keyof typeof TRANSLATIONS;
+
+// Translation function
+export const t = TRANSLATIONS['简体中文'];

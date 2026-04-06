@@ -8,7 +8,8 @@
     BarChart3,
     Settings,
     LogOut,
-    User
+    User,
+    MessageSquare
   } from 'lucide-svelte';
   import type { Schema, Section, Field, FieldType, Survey, ViewType, Theme, SystemSettings } from './types';
   import { TRANSLATIONS } from './i18n';
@@ -21,6 +22,7 @@
   import AnalyticsView from './components/AnalyticsView.svelte';
   import SurveyFillView from './components/SurveyFillView.svelte';
   import SettingsView from './components/SettingsView.svelte';
+  import AIChatView from './components/AIChatView.svelte';
   import NavItem from './components/NavItem.svelte';
   
   // Import Gun.js
@@ -208,7 +210,15 @@
     apiToken: "sk_live_51N8jK...",
     emailNotifications: true,
     inAppPopups: true,
-    feedbackReminder: "即时"
+    feedbackReminder: "即时",
+    // AI Model settings
+    aiEnabled: true,
+    aiProvider: "minimax",
+    geminiApiKey: "",
+    minimaxApiKey: "",
+    minimaxGroupId: "",
+    aiModel: "MiniMax-M2.7",
+    aiTemperature: 0.7
   });
   
   // 订阅 settings 变化并保存到 localStorage
@@ -536,6 +546,14 @@
               <LayoutDashboard slot="icon" class="w-4 h-4" />
             </NavItem>
             <NavItem
+              active={viewState === 'ai'}
+              label={$t_store.aiChat}
+              activeColor={systemSettingsState.primaryColor}
+              onclick={() => navigateTo('/ai')}
+            >
+              <MessageSquare slot="icon" class="w-4 h-4" />
+            </NavItem>
+            <NavItem
               active={viewState === 'analytics' && !!activeSurveyIdState}
               label={$t_store.analytics}
               activeColor={systemSettingsState.primaryColor}
@@ -588,7 +606,22 @@
               language={systemSettingsState.language}
               userPub={userState?.pub}
             />
-          {:else if viewState === 'editor'}
+          {:else if viewState === 'ai'}
+            <AIChatView 
+              onGenerate={(survey) => {
+                // 保存生成的问卷
+                const newSurvey: Survey = {
+                  ...survey,
+                  id: `s_${Date.now()}`
+                };
+                surveys.update(prev => [newSurvey, ...prev]);
+                // 导航到编辑器
+                activeSurveyId.set(newSurvey.id);
+                navigateTo(`/editor/${newSurvey.id}`);
+              }}
+              onBack={() => navigateTo('/')}
+            />
+          {:else if viewState === 'editor'} 
             {#if activeSurveyState}
               <EditorView 
                 survey={activeSurveyState}

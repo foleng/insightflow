@@ -11,6 +11,7 @@ export interface Route {
 // 定义路由配置
 export const routes: Route[] = [
   { path: '/', view: 'dashboard', protected: true },
+  { path: '/ai', view: 'ai', protected: true },
   { path: '/editor/:id', view: 'editor', protected: true },
   { path: '/analytics/:id', view: 'analytics', protected: true },
   { path: '/fill/:id', view: 'fill', protected: false },

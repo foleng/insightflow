@@ -39,6 +39,14 @@ export interface SystemSettings {
   emailNotifications: boolean;
   inAppPopups: boolean;
   feedbackReminder: string;
+  // AI Model settings
+  aiEnabled: boolean;
+  aiProvider: 'gemini' | 'minimax' | 'baidu' | 'tencent';
+  geminiApiKey: string;
+  minimaxApiKey: string;
+  minimaxGroupId: string;
+  aiModel: string;
+  aiTemperature: number;
 }
 
 export interface Survey {
@@ -54,4 +62,4 @@ export interface Survey {
   theme?: Theme;
 }
 
-export type ViewType = 'dashboard' | 'editor' | 'analytics' | 'settings' | 'fill';
+export type ViewType = 'dashboard' | 'editor' | 'analytics' | 'settings' | 'fill' | 'ai';

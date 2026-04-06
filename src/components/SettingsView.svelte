@@ -199,5 +199,125 @@
         </div>
       </div>
     </div>
+
+    <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 md:col-span-2">
+      <h2 class="text-lg font-bold mb-4">大模型配置</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label for="ai-enabled" class="text-sm font-bold text-slate-500">启用 AI 功能</label>
+            <input 
+              id="ai-enabled"
+              type="checkbox" 
+              checked={localSettings.aiEnabled}
+              onchange={(e) => { localSettings.aiEnabled = e.target.checked; handleUpdate(); }}
+              class="w-5 h-5"
+              style:accent-color={localSettings.primaryColor}
+            />
+          </div>
+          <p class="text-xs text-slate-400">启用后可以通过 AI 对话生成问卷</p>
+        </div>
+        <div>
+          <label for="ai-provider" class="text-sm font-bold text-slate-500 mb-2 block">AI 提供商</label>
+          <select 
+            id="ai-provider"
+            value={localSettings.aiProvider}
+            onchange={(e) => { localSettings.aiProvider = e.target.value as any; handleUpdate(); }}
+            class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none"
+          >
+            <option value="gemini">Google Gemini</option>
+            <option value="minimax">Minimax</option>
+            <option value="baidu">百度文心一言</option>
+            <option value="tencent">腾讯混元</option>
+          </select>
+        </div>
+        
+        <!-- Gemini 配置 -->
+        {#if localSettings.aiProvider === 'gemini'}
+        <div class="md:col-span-2">
+          <label for="gemini-api-key" class="text-sm font-bold text-slate-500 mb-2 block">Gemini API Key</label>
+          <input 
+            id="gemini-api-key"
+            type="password" 
+            value={localSettings.geminiApiKey}
+            onchange={(e) => { localSettings.geminiApiKey = e.target.value; handleUpdate(); }}
+            class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none"
+            placeholder="Enter your Gemini API key"
+          />
+          <p class="text-xs text-slate-400 mt-1">You can get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank" class="text-blue-500">Google AI Studio</a></p>
+        </div>
+        <div>
+          <label for="ai-model" class="text-sm font-bold text-slate-500 mb-2 block">AI 模型</label>
+          <select 
+            id="ai-model"
+            value={localSettings.aiModel}
+            onchange={(e) => { localSettings.aiModel = e.target.value; handleUpdate(); }}
+            class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none"
+          >
+            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+            <option value="gemini-1.0-pro">Gemini 1.0 Pro</option>
+          </select>
+        </div>
+        {/if}
+        
+        <!-- Minimax 配置 -->
+        {#if localSettings.aiProvider === 'minimax'}
+        <div class="md:col-span-2">
+          <label for="minimax-api-key" class="text-sm font-bold text-slate-500 mb-2 block">Minimax API Key</label>
+          <input 
+            id="minimax-api-key"
+            type="password" 
+            value={localSettings.minimaxApiKey}
+            onchange={(e) => { localSettings.minimaxApiKey = e.target.value; handleUpdate(); }}
+            class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none"
+            placeholder="Enter your Minimax API key"
+          />
+        </div>
+        <div class="md:col-span-2">
+          <label for="minimax-group-id" class="text-sm font-bold text-slate-500 mb-2 block">Minimax Group ID</label>
+          <input 
+            id="minimax-group-id"
+            type="text" 
+            value={localSettings.minimaxGroupId}
+            onchange={(e) => { localSettings.minimaxGroupId = e.target.value; handleUpdate(); }}
+            class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none"
+            placeholder="Enter your Minimax Group ID"
+          />
+          <p class="text-xs text-slate-400 mt-1">You can get these from <a href="https://platform.minimax.chat/console/api-keys" target="_blank" class="text-blue-500">Minimax Console</a></p>
+        </div>
+        <div>
+          <label for="ai-model" class="text-sm font-bold text-slate-500 mb-2 block">AI 模型</label>
+          <select 
+            id="ai-model"
+            value={localSettings.aiModel}
+            onchange={(e) => { localSettings.aiModel = e.target.value; handleUpdate(); }}
+            class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none"
+          >
+            <option value="MiniMax-M2.7">MiniMax-M2.7</option>
+            <option value="abab5.5-chat">abab5.5-chat</option>
+            <option value="abab5.5s-chat">abab5.5s-chat</option>
+            <option value="abab6.0-chat">abab6.0-chat</option>
+          </select>
+        </div>
+        {/if}
+        
+        <!-- 通用配置 -->
+        <div>
+          <label for="ai-temperature" class="text-sm font-bold text-slate-500 mb-2 block">AI 温度 (0-1)</label>
+          <input 
+            id="ai-temperature"
+            type="number" 
+            step="0.1"
+            min="0"
+            max="1"
+            value={localSettings.aiTemperature}
+            onchange={(e) => { localSettings.aiTemperature = parseFloat(e.target.value); handleUpdate(); }}
+            class="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl outline-none"
+          />
+          <p class="text-xs text-slate-400">Higher values make output more creative, lower values more deterministic</p>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
